@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">SinovoLibDemo</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="menu_Connect">Connect via qrcode</string>
+    <string name="menu_unlock">Connect via mac</string>
+    <string name="menu_setings">Settings</string>
+
+    <string name="openlocation">You need to open location service</string>
+    <string name="appaskper">It can\'t work without the permissions</string>
+    <string name="qrcode_len">QRCode\'s length must be 12</string>
+    <string name="mac_len">mac address\'s length must be 12</string>
+    <string name="sno_len">lock sno\'s length must be 6</string>
+    <string name="needermisson">The app need permissions to work</string>
+    <string name="inputcode">Please input Code</string>
+    <string name="unconnect">Bluetooth is unconnected</string>
+
+</resources>
