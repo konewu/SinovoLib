@@ -1,3 +1,4 @@
+include ':andesptouch'
 include ':sinovoble'
 include ':app'
 rootProject.name = "SinovoLibDemo"

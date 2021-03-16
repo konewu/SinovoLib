@@ -12,5 +12,9 @@
             android:id="@+id/nav_gallery"
             android:icon="@drawable/ic_baseline_lock_open_24"
             android:title="@string/menu_unlock" />
+        <item
+            android:id="@+id/nav_slideshow"
+            android:icon="@drawable/ic_baseline_settings_24"
+            android:title="@string/menu_gw" />
     </group>
 </menu>

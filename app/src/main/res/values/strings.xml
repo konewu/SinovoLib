@@ -9,6 +9,7 @@
 
     <string name="menu_Connect">Connect via qrcode</string>
     <string name="menu_unlock">Connect via mac</string>
+    <string name="menu_gw">Gateway Configure</string>
     <string name="menu_setings">Settings</string>
 
     <string name="openlocation">You need to open location service</string>
@@ -19,5 +20,9 @@
     <string name="needermisson">The app need permissions to work</string>
     <string name="inputcode">Please input Code</string>
     <string name="unconnect">Bluetooth is unconnected</string>
+
+    <string name="failedgw">Gateway configure failed</string>
+
+    <string name="successgw">Success! Gateway id:</string>
 
 </resources>
