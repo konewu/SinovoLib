@@ -2,10 +2,14 @@ package com.sinovotec.sinovoble.common;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Environment;
 import android.util.Log;
+
+import com.alibaba.fastjson.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -22,6 +27,7 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Random;
+import java.util.TimeZone;
 
 public class ComTool {
 
@@ -354,6 +360,48 @@ public class ComTool {
             }
         }
         return imeiStr.toString();
+    }
+
+    //判断字符串是否为 Json 格式
+    public static boolean isJson(String content) {
+        if(content.isEmpty()){
+            return false;
+        }
+        boolean isJsonObject = true;
+        boolean isJsonArray = true;
+        try {
+            JSONObject.parseObject(content);
+        } catch (Exception e) {
+            isJsonObject = false;
+        }
+        try {
+            JSONObject.parseArray(content);
+        } catch (Exception e) {
+            isJsonArray = false;
+        }
+        //不是json格式
+        return isJsonObject || isJsonArray;
+    }
+
+    /**
+     * 判断手机是否连接了wifi
+     * @param mContext 上下文对象
+     * @return int  ,  0 未知，1为 wifi， 2为 手机数据
+     */
+    public static int getNetType(Context mContext) {
+        int connectType = 0;
+        ConnectivityManager connectivityManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetInfo = Objects.requireNonNull(connectivityManager).getActiveNetworkInfo();
+
+        if (activeNetInfo != null){
+            if (activeNetInfo.getType() == ConnectivityManager.TYPE_WIFI){
+                connectType = 1;
+            }
+            if (activeNetInfo.getType() == ConnectivityManager.TYPE_MOBILE){
+                connectType = 2;
+            }
+        }
+        return connectType;
     }
 
 }

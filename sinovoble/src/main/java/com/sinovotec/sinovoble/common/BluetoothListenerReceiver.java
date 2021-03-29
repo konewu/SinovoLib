@@ -9,6 +9,7 @@ import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import com.sinovotec.mqtt.MqttLib;
 import com.sinovotec.sinovoble.SinovoBle;
 import com.sinovotec.sinovoble.callback.BleConnCallBack;
 import java.util.Objects;
@@ -18,7 +19,7 @@ import java.util.Objects;
  */
 
 public class BluetoothListenerReceiver extends BroadcastReceiver {
-    final String TAG = "SinovoBleLibTest";
+    final String TAG = "SinovoBleLib";
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
@@ -54,7 +55,6 @@ public class BluetoothListenerReceiver extends BroadcastReceiver {
                         if (SinovoBle.getInstance().getmConnCallBack()!= null) {
                             SinovoBle.getInstance().setConnected(false);
                             SinovoBle.getInstance().setLinked(false);
-                          //  SinovoBle.getInstance().getmConnCallBack().onBluetoothOff();
                         }
                     }
 
@@ -67,7 +67,6 @@ public class BluetoothListenerReceiver extends BroadcastReceiver {
         }
 
         //监控手机的网络
-
         // 监听网络连接，包括wifi和移动数据的打开和关闭,以及连接上可用的连接都会接到监听
         if (ConnectivityManager.CONNECTIVITY_ACTION.equals(intent.getAction())) {
             ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -79,13 +78,17 @@ public class BluetoothListenerReceiver extends BroadcastReceiver {
                     if (info.getType() == ConnectivityManager.TYPE_WIFI){
                         String wifiSSID = ComTool.getWifiName(context.getApplicationContext());
                         Log.i(TAG, "连接到wifi " + wifiSSID);
+                        MqttLib.getInstance().setConnectType(1);
                     }else if (info.getType() == ConnectivityManager.TYPE_MOBILE){
                         Log.e(TAG, "连上 数据网络");
+                        MqttLib.getInstance().setConnectType(2);
                     }
                 } else {
+                    MqttLib.getInstance().setConnectType(0);
                     Log.e(TAG,  "网络断开");
                 }
             }else {
+                MqttLib.getInstance().setConnectType(0);
                 Log.e(TAG, "获取不到网络信息");
             }
         }
@@ -95,6 +98,7 @@ public class BluetoothListenerReceiver extends BroadcastReceiver {
             int wifistate = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_DISABLED);
             if (wifistate == WifiManager.WIFI_STATE_DISABLED) {
                 Log.i(TAG, "系统关闭wifi");
+                MqttLib.getInstance().setConnectType(0);
             } else if (wifistate == WifiManager.WIFI_STATE_ENABLED) {
                 Log.i(TAG, "系统开启wifi");
             }

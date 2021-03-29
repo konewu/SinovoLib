@@ -397,9 +397,10 @@ public class SinovoBle {
             Log.e(TAG,"ScanCallBack or mConnCallBack is null");
 
             //出错了，需要提示客户
-
             return;
         }
+
+
         //保存用户指定的 自动连接锁列表
         setToConnectLockList(autoConnectList);
 
@@ -408,9 +409,6 @@ public class SinovoBle {
             Log.d(TAG,"Scan first according to setup needs");
             SinovoBle.getInstance().startBleScan();
         }else {
-            //准备 自动连接之前，先停止扫描；  这样连接效率很高一些
-            Log.d(TAG,"No scanning is required according to the Settings");
-
             //只连接队列中的第一把锁，连接的时候 先停止蓝牙扫描，这样连接效率高一些，同时连接速度也快一些
             if (!autoConnectList.isEmpty()){
                 setScanAgain(false);

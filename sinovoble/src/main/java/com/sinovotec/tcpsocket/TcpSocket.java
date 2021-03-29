@@ -7,12 +7,15 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.sinovotec.mqtt.MqttLib;
 import com.sinovotec.mqtt.iotMqttCallback;
+import com.sinovotec.sinovoble.common.BleData;
+import com.sinovotec.sinovoble.common.ComTool;
 
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
@@ -33,7 +36,6 @@ public class TcpSocket {
 
     private final iotMqttCallback iotMqttCallback;      //mqtt 通信结果回调
     private final LinkedList<String> commandList = new LinkedList<>();      //所有需要执行的命令 都放入到list中排队 ，等待执行
-  //  int cmdIndex = 0;  //当前执行的命令在队列中的序号
 
     public TcpSocket(iotMqttCallback mqttCallback) {
         this.iotMqttCallback = mqttCallback;
@@ -99,10 +101,10 @@ public class TcpSocket {
                         writer = socket.getOutputStream();
                         isConnected = true;
                         tcpSendHander.removeCallbacksAndMessages(null);    //取消定时任务
-                        Log.w(TAG, "tcpSocket连接成功，开始检测数据");
+//                        Log.w(TAG, "tcpSocket连接成功，开始检测数据");
 
                         if (isServerClose()) {
-                            Log.i(TAG, "TCP Socket连接已经断开2");
+//                            Log.i(TAG, "TCP Socket连接已经断开2");
                             sendFaild(cmd);
                             closeSocket();
                         }else {
@@ -110,30 +112,65 @@ public class TcpSocket {
                             writer.write(cmd.getBytes());
                             writer.flush();
                             tcpSendHander.postDelayed(() -> checkDataReceive(cmd), timeOut);
-                            Log.w(TAG, "TCP Socket发送数据成功:" + cmd);
+//                            Log.w(TAG, "TCP Socket发送数据成功:" + cmd);
                         }
 
                         while (true) {
                             reader = socket.getInputStream();
                             DataInputStream input = new DataInputStream(reader);
-                            byte[] b = new byte[1024];
+                            byte[] b = new byte[10240];
 
                             while (true) {
                                 if (isServerClose()) {
-                                    Log.i(TAG, "TCP Socket连接已经断开3");
+//                                    Log.i(TAG, "TCP Socket连接已经断开3");
                                     sendFaild(cmd);
                                     break;
                                 }
 
                                 int length = input.read(b);
-                                Log.i(TAG, "打印出字节的大小："+ length);
+//                                Log.i(TAG, "打印出字节的大小："+ length);
 
                                 if (length != -1) {
                                     String msgFromTcp = new String(b, 0, length, "gb2312");
                                     msgFromTcp = msgFromTcp.replaceAll("\\p{C}", "");   //去掉不可见的字符
-                                    Log.e(TAG, "收到tcp 服务端的数据：" + msgFromTcp);
-                                    Log.e(TAG, "当前发送的数据：" + cmd);
-                                    iotMqttCallback.onTcpReceiveMsg(msgFromTcp);
+//                                    Log.e(TAG, "收到tcp 服务端的数据：" + msgFromTcp);
+//                                    Log.e(TAG, "当前发送的数据：" + cmd);
+                                    MqttLib.getInstance().setTcpSendFaild(0);   //收到回复，表示发送成功
+                                    MqttLib.getInstance().setTcpSendFaildInter(0);
+
+                                    String[] strarray = msgFromTcp.split("[}]");
+                                    for (String msgSub: strarray) {
+                                        msgSub = msgSub + "}";
+                                        if (ComTool.isJson(msgSub)) {
+
+                                            JSONObject jsonObject = JSON.parseObject(msgSub);
+
+                                            String type = jsonObject.getString("type");
+                                            if (type.equals("bledata")){  //需要先解析数据
+                                                String data = jsonObject.getString("data");
+                                                String mac  = jsonObject.getString("mac");
+                                                String appId = jsonObject.getString("appId");
+                                                String uuid  = jsonObject.getString("uuid");
+                                                String gateway_id = jsonObject.getString("gateway_id");
+
+                                                LinkedHashMap<String, Object> resultmap = BleData.getInstance().getDataFromBle(data.toLowerCase(), mac.toLowerCase());
+//                                                Log.d(TAG, "数据处理后的结果：" + JSON.toJSONString(resultmap));
+
+                                                resultmap.put("appId", appId);
+                                                resultmap.put("type", type);
+                                                resultmap.put("uuid", uuid);
+                                                resultmap.put("gateway_id", gateway_id);
+                                                resultmap.put("mac", mac);
+
+                                                iotMqttCallback.onMsgArrived("TCP Socket", JSON.toJSONString(resultmap));
+                                            }else {
+                                                iotMqttCallback.onMsgArrived("TCP Socket",msgSub);
+                                            }
+                                        }else {
+                                            Log.w(TAG,"非json格式的数据不处理，以免引起异常");
+                                        }
+                                    }
+
 
                                     //收到tcp的回复，同时将 mqtt 的超时检测取消
                                     if (msgFromTcp.contains("bledata")) {
@@ -146,10 +183,10 @@ public class TcpSocket {
                                         Map sendMap = JSON.parseObject(cmd);
                                         boolean sendOK = false;   //标记是否正确收到回复，然后发送下一条
 
-                                        String[] strarray = msgFromTcp.split("[}]");
-                                        for (String msgSub : strarray) {
+                                        String[] tcparray = msgFromTcp.split("[}]");
+                                        for (String msgSub : tcparray) {
                                             msgSub = msgSub + "}";
-                                            if (isJson(msgSub)) {
+                                            if (ComTool.isJson(msgSub)) {
                                                 //需要判断 服务器回复过来的数据功能码 是否与发送的一致
                                                 Map resultMap = JSON.parseObject(msgSub);
                                                 Log.e(TAG, "返回的数据的type：" + Objects.requireNonNull(resultMap.get("type")));
@@ -158,7 +195,7 @@ public class TcpSocket {
                                                         Objects.requireNonNull(resultMap.get("type")).toString().equals("disconnectLock") ||
                                                         Objects.requireNonNull(resultMap.get("type")).toString().equals("reboot") ||
                                                         Objects.requireNonNull(resultMap.get("type")).toString().equals("query_bindLock")) {
-                                                    if (Objects.requireNonNull(resultMap.get("type")).toString().equals(sendMap.get("type").toString())) {
+                                                    if (Objects.requireNonNull(resultMap.get("type")).toString().equals(Objects.requireNonNull(sendMap.get("type")).toString())) {
                                                         sendOK = true;
                                                     }
                                                 }
@@ -238,16 +275,26 @@ public class TcpSocket {
 
     public void sendFaild(String msg){
         Log.i(TAG, "命令："+msg+" 发送失败");
-        iotMqttCallback.onTcpSendFailed(msg);
+        if (MqttLib.getInstance().getTcpSendFaild() == 0){
+            MqttLib.getInstance().setTcpSendFaildInter(System.currentTimeMillis());
+        }
+        MqttLib.getInstance().setTcpSendFaild(MqttLib.getInstance().getTcpSendFaild() + 1);
         commandList.clear();
         isConnected = false;
         isSending = false;
+        if (!msg.isEmpty()) {
+            MqttLib.getInstance().getDataToSend(msg, "", "");
+        }
     }
 
     //tcp 数据发送之后，2s后是否收到回复
     public void checkDataReceive(String msgcmd){
         Log.i(TAG, "数据通过tcp socket发送出去 3秒没有收到回复 "+ msgcmd);
-        iotMqttCallback.onTcpSendFailed(msgcmd);
+
+        if (!msgcmd.isEmpty()){
+            MqttLib.getInstance().getDataToSend(msgcmd, "", "");
+        }
+
         if (isConnected){
             if (commandList.size()>0){
                 commandList.removeFirst();
@@ -287,8 +334,7 @@ public class TcpSocket {
                 cmd = "";
             }
         }
-//        commandList.clear();
-//        iotMqttCallback.onTcpSendFailed(cmd);
+
     }
 
     //关闭socket
@@ -324,24 +370,4 @@ public class TcpSocket {
         }
     }
 
-    //判断字符串是否为 Json 格式
-    public static boolean isJson(String content) {
-        if(content.isEmpty()){
-            return false;
-        }
-        boolean isJsonObject = true;
-        boolean isJsonArray = true;
-        try {
-            JSONObject.parseObject(content);
-        } catch (Exception e) {
-            isJsonObject = false;
-        }
-        try {
-            JSONObject.parseArray(content);
-        } catch (Exception e) {
-            isJsonArray = false;
-        }
-        //不是json格式
-        return isJsonObject || isJsonArray;
-    }
 }

@@ -186,7 +186,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
                                 sendDataHandler.removeCallbacksAndMessages(null);    //取消定时任务
                             }
                             LinkedHashMap resultmap = BleData.getInstance().getDataFromBle(recvStr, SinovoBle.getInstance().getLockMAC().replace(":",""));
-                           // Log.d(TAG, "：" + JSON.toJSONString(resultmap));
 
                             if(resultmap !=null) {
                                 afterReceiveData(new JSONObject(resultmap));
@@ -448,6 +447,18 @@ public class BleConnCallBack extends BluetoothGattCallback {
 
         //处理绑定之后的自动创建用户
         if (Objects.equals(funCode, "01")){
+            Log.d(TAG, "jsonObject 数据：" + jsonObject);
+//            if (jsonObject.containsKey("codeType")){
+//                String codeType = jsonObject.getString("codeType");
+//                if (codeType.equals("01")){
+//                    String code = jsonObject.getString("code");
+//
+//                    String opendata = lockSno + "01"+code;
+//                    String bindOpenData = BleData.getInstance().getDataToEnctrypt("0a",opendata, lockmac).toUpperCase();
+//                    String openBackData = BleData.getInstance().getDataToEnctrypt("0a","0100",lockmac).toUpperCase();
+//
+//                }
+//            }
             SinovoBle.getInstance().getmConnCallBack().onConnectLockViaQRCode(JSON.toJSONString(jsonObject));
         }
 
@@ -475,12 +486,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
         if (Objects.equals(funCode, "08")){
             SinovoBle.getInstance().getmConnCallBack().onVerifyCode(JSON.toJSONString(jsonObject));
         }
-
-        //设置或查询锁的名称、绑定后自动创建用户、锁端时间、自动锁门时间、静音设置、基准时间、超级用户权限、
-//        if (Objects.equals(funCode, "09")|| Objects.equals(funCode, "10")||Objects.equals(funCode, "11")||
-//                Objects.equals(funCode, "16")|| Objects.equals(funCode, "1c")|| Objects.equals(funCode, "1f")||Objects.equals(funCode, "23")){
-//            SinovoBle.getInstance().getmConnCallBack().onSetLockInfo(JSON.toJSONString(jsonObject));
-//        }
 
         //查询锁端的信息
         if (Objects.equals(funCode, "0e")|| Objects.equals(funCode, "0f")|| Objects.equals(funCode, "12")||

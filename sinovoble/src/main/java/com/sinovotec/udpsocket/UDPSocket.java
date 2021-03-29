@@ -104,7 +104,7 @@ public class UDPSocket {
             } catch (IOException e) {
                 Log.e(TAG, "UDP数据包接收失败！线程停止");
                 stopUDPSocket();
-                iotMqttCallback.onUdpSendFailed(sendData);
+              //  iotMqttCallback.onUdpSendFailed(sendData);
                 e.printStackTrace();
                 return;
             }
@@ -117,7 +117,7 @@ public class UDPSocket {
             String strReceive = new String(receivePacket.getData(), 0, receivePacket.getLength());
             strReceive = strReceive.replaceAll("\\p{C}", "");   //去掉不可见的字符
             Log.w(TAG, strReceive + " from " + receivePacket.getAddress().getHostAddress() + ":" + receivePacket.getPort());
-            iotMqttCallback.onUdpReceiveMsg(strReceive);
+//            iotMqttCallback.onUdpReceiveMsg(strReceive);
 
             // 每次接收完UDP数据后，重置长度。否则可能会导致下次收到数据包被截断。
             if (receivePacket != null) {

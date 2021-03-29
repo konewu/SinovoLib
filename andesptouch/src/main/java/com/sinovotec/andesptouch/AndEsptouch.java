@@ -161,6 +161,8 @@ public class AndEsptouch implements Handler.Callback {
         }
     }
 
+
+
     public void setOnEsptouchTaskListener(OnEsptouchTaskListener listener) {
         this.onEsptouchTaskListener = listener;
     }
@@ -256,7 +258,6 @@ public class AndEsptouch implements Handler.Callback {
         @Override
         protected List<IEsptouchResult> doInBackground(byte[]... params) {
             int taskResultCount;
-            Log.d(TAG, "doInBackground 去配网");
             synchronized (mLock) {
                 byte[] ssid = params[0];
                 byte[] bssid = params[1];
@@ -272,7 +273,6 @@ public class AndEsptouch implements Handler.Callback {
                     message.what = RESULT_CONFIG_SUCCESS;
                     message.obj = resultMsg;
                     mHandler.sendMessage(message);
-                    Log.d(TAG, "配网成功快快快，返回的数据：" + message);
                     if (isCustomUdpReceiver) {
                         startReceiverData(result.getInetAddress().getHostAddress());
                     }
@@ -308,7 +308,6 @@ public class AndEsptouch implements Handler.Callback {
                 }
             }
             if (mDeviceCount != 1) {
-
                 Message message = Message.obtain();
                 message.what = RESULT_CONFIG_MULTI_SUCCESS;
                 message.obj = builder.toString();

@@ -55,56 +55,6 @@ public class BleData {
     }
 
     /**
-     * 计算出命令的 checksum值
-     * @param data  待计算的命令
-     * @return   计算出来的checksum值, 需要注意，计算出来的结果 需要取最后两位数字
-     */
-    public  String checkSum(String data){
-        int checksum = 0;    //计算校验和
-
-        String returnStr = "";
-
-        for (int i=0; i< data.length(); ){
-            if (i+2 > data.length()){
-               return "";   //计算错误，
-            }
-            String sub_str = data.substring(i, i + 2);
-            checksum += Integer.parseInt(sub_str, 16);      //16进制字符转10进制的整数
-            i = i+2;
-        }
-
-        //将十进制转换为 16进制字符串返回
-        String hexStr = Integer.toHexString(checksum);
-        if (hexStr.length() >2){
-            returnStr = hexStr.substring(hexStr.length()-2);
-        }
-
-        if (hexStr.length() == 2){
-            returnStr = hexStr;
-        }
-
-        if (hexStr.length() <2){
-            returnStr = "0"+hexStr;
-        }
-
-        return  returnStr;
-    }
-
-
-    /**
-     * 接受到锁端发过来的数据，进行checksum检验，是否合法
-     * @param data s
-     * @return b
-     */
-    private boolean checkSumIsOK(String data){
-        String sub_str = data.substring(0, data.length()-2);
-        String sum_checksum = data.substring(data.length()-2);
-        String checksum_calc = checkSum(sub_str);
-
-        return checksum_calc.equals(sum_checksum);
-    }
-
-    /**
      * 处理从ble端发过来的数据
      * @param data s
      * @return String 返回数据格式如下
@@ -115,17 +65,11 @@ public class BleData {
      * 返回 errCode 为 -5 ，解密数据异常
      * 返回 errCode 为 -6 ，有效数据长度超过16个字节
      */
-    public LinkedHashMap getDataFromBle(String data, String mac){
+    public LinkedHashMap<String, Object> getDataFromBle(String data, String mac){
         Log.d(TAG, "receive data from ble:"+data + "，lock's address:" + mac);
 
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("getData", "0");
-
-        //1、先检验checksum 是否ok
-        if (!checkSumIsOK(data)){
-            map.put("errCode", "-2");
-            return map;
-        }
 
         //2、检测是否为fe开头的数据，非fe、fc开头则先不处理
         String headCode = data.substring(0,2);
@@ -154,12 +98,10 @@ public class BleData {
             }else {
               if (funcodebt.equals(funcodelist) || (funcodebt.equals("14") && funcodelist.equals("13"))
                       || funcodebt.equals("18") && funcodelist.equals("17")) {
-                //  Log.d(TAG, "确认过眼神，就是你了，现在可删除");
                   getCommandList().removeFirst();
                   setExeCmding(false);
 
                   if (SinovoBle.getInstance().isBleConnected()) {
-                  //    Log.d(TAG, "蓝牙连接，通过蓝牙发送数据");
                       sendDataToBle();
                   }
               }else {
@@ -171,35 +113,24 @@ public class BleData {
         Log.d(TAG, "准备进行解密 接收到的密文：" + data + ",解密的mac：" + mac.toUpperCase());
 
         //3、获取出来功能码 , 并进行解密处理
-        String funCode = data.substring(2,4);
-        String dataEncrypt = data.substring(6,data.length()-2);
-        String dataDecode ;
+        String dataDecode = SinovoBle.getInstance().getMyJniLib().decryptAes(data, mac.toUpperCase());
 
-        //非绑定功能的数据，需要解密
-        if (!funCode.equals("00")){
-            dataDecode = SinovoBle.getInstance().getMyJniLib().decryptAes(dataEncrypt, mac.toUpperCase());
-        }else {
-            dataDecode = dataEncrypt;
+        if (dataDecode.contains("error")){
+            map.put("errCode", "-3");
+            map.put("error", dataDecode);
+            return map;
         }
 
-        Log.d(TAG, "解密后的内容：" +dataDecode);
+        String funCode = dataDecode.split(",")[0];
+        String datavalue = dataDecode.split(",")[1];
+
+        Log.d(TAG, "解密后的内容：" +dataDecode);  //format ： funCode,data
 
         //异常情况，解密为空
-        if (dataDecode.isEmpty()){
+        if (datavalue.isEmpty() || funCode.isEmpty()){
             map.put("errCode", "-5");
             return map;
         }
-
-        //4、获取出来实际的有效数据
-        String dataLen_hex = data.substring(4,6);
-        int dataLen = Integer.valueOf(dataLen_hex,16);  //转为10进制
-
-        if (dataLen >16){
-            map.put("errCode", "-6");
-            return map;
-        }
-
-        String datavalue = dataDecode.substring(0,dataLen*2);
 
         //绑定的数据处理
         if (funCode.equals("00")) { return bindPhone(datavalue); }
@@ -302,49 +233,11 @@ public class BleData {
 
     /**
      * 发送数据 到 ble端；
-     * 1、需要计算出有效数据的长度，不足16字节的需要在后面补f
-     * 2、需要对数据进行加密
-     * 3、计算checksum ，并组成20字节的最终命令
-     * @param funcode String
-     * @param data String
      */
     public void exeCommand(String funcode, String data, boolean toTop){
-        StringBuilder data_send = new StringBuilder(data);
-        int byteLen = data.length() /2;
-        byteLen += data.length() %2;
-
-        if (byteLen <3){
-            Log.d(TAG, "数据包的内容异常，至少有3个字节才可以");
-            return;
-        }
-
-        //如果data 不够16字节，则在后面补ff
-        for (int i=32;i> data.length(); i--) {
-            data_send.append("f");
-        }
-        Log.d(TAG, "exeCommand 需要发送的数据，在补f之后："+data_send + ",长度："+data_send.length());
-
-        //加密处理
-        if (!funcode.equals("00") && SinovoBle.getInstance().getLockMAC() !=null){
-            String lockmac = SinovoBle.getInstance().getLockMAC().replace(":","");
-            Log.d(TAG, "准备加密的mac："+lockmac);
-            data_send = new StringBuilder(SinovoBle.getInstance().getMyJniLib().encryptAes(data_send.toString(), lockmac));
-//            Log.d(TAG, "加密的结果so："+data_send);
-          //  data_send2 = new StringBuilder(encryptData(data_send.toString(), lockmac));
-//            Log.d(TAG, "加密的结果2："+encryptData(data_send.toString(), lockmac.toLowerCase()));
-        }
-
-        Log.d(TAG, "需要发送的数据，加密后："+data_send);
-
-        String data_result = "fe" +funcode ;
-        if (byteLen<16){
-            data_result = data_result + "0"+ Integer.toHexString(byteLen) + data_send;
-        }else {
-            data_result = data_result + Integer.toHexString(byteLen) + data_send;
-        }
-
-        data_result = data_result +checkSum(data_result);
-
+        String lockmac = SinovoBle.getInstance().getLockMAC().replace(":","");
+        String data_result = SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data, lockmac);
+        Log.d(TAG, "准备加密的mac："+lockmac + ", 加密的结果："+ data_result);
         //先判断 此命令是否已经存在队列中，如果已经存在，则不再加入
         if (!commandList.contains(data_result)){
             //命令需要查到队首
@@ -371,8 +264,6 @@ public class BleData {
             }else {
                 Log.d(TAG, "采用wifi连接，通过mqtt 发送命令");
             }
-//        }else {
-//            Log.e(TAG, "当前正在执行命令。忽略，不执行");
         }
     }
 
@@ -419,16 +310,8 @@ public class BleData {
 
     /**
      * 处理手机绑定请求的数据
-     * @param datavalue
-     * 0xFE 0x00 LEN MAC SNO ERR_CODE checksum
-     * @return String 格式如下：
-     * xx,yy
-     * xx 为错误码
-     * yy 为返回的内容, 具体内容的定义，在不同的协议上是不一样的
-     * 在本协议中， yy定义如下
-     * mac,sno
      */
-    private LinkedHashMap bindPhone(String datavalue){
+    private LinkedHashMap<String, Object> bindPhone(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "00");
@@ -507,16 +390,8 @@ public class BleData {
 
     /**
      * 绑定成功后进行登录的数据处理
-     * @param datavalue
-     * 0xFE 0x01 LEN ALLOW  NID TYPE ID PASSWORD ERR_CODE checksum
-     * @return String 格式如下：
-     * xx,yy
-     * xx 为错误码
-     * yy 为返回的内容, 具体内容的定义，在不同的协议上是不一样的
-     * 在本协议中， yy定义如下
-     * mac,sno
      */
-    private  LinkedHashMap loginAfterBond(String datavalue) {
+    private  LinkedHashMap<String, Object> loginAfterBond(String datavalue) {
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "01");
@@ -536,9 +411,7 @@ public class BleData {
             BleData.getInstance().exeCommand("1f", SinovoBle.getInstance().getLockSNO(), false); //查询基准时间
             String allow = datavalue.substring(0,2);
             map.put("autoCreateUser", allow);
-            if (allow.equals("00") && len < 6){
-                return map;
-            }else {
+            if (!allow.equals("00") || len >= 6){
                 String nid   = datavalue.substring(2,4);
                 String type  = datavalue.substring(4,6);
                 String codeid  = datavalue.substring(6,8);
@@ -549,20 +422,24 @@ public class BleData {
                 map.put("sid", codeid);
                 map.put("code", password);
 
-                return map;
+                //计算出opendata，openback
+                if (type.equals("01")){
+                    String opendata = SinovoBle.getInstance().getLockSNO() + "01"+password;
+                    String bindOpenData = getDataToEnctrypt("0a",opendata, SinovoBle.getInstance().getLockMAC()).toUpperCase();
+                    String openBackData = getDataToEnctrypt("0a","0100",SinovoBle.getInstance().getLockMAC()).toUpperCase();
+                    map.put("opendata", bindOpenData);
+                    map.put("openback", openBackData);
+                    Log.d(TAG,"开门的数据：" + bindOpenData + ", 开门成功的数据："+ openBackData);
+                }
             }
-        }else {
-//            Log.d(TAG, "登录失败");
-            return map;
         }
+        return map;
     }
 
     /**
      * 添加用户的返回数据处理
-     * @param datavalue
-     * 0xFE 0X02 LEN NID USERNAME ERR_CODE checksum
      */
-    private LinkedHashMap addNewUser(String datavalue){
+    private LinkedHashMap<String, Object> addNewUser(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "02");
@@ -588,10 +465,8 @@ public class BleData {
 
     /**
      * 修改用户名
-     * @param datavalue
-     * 0xFE 0X03 LEN NID USERNAME ERR_CODE checksum
      */
-    private LinkedHashMap editUsername(String datavalue){
+    private LinkedHashMap<String, Object> editUsername(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "03");
@@ -603,7 +478,6 @@ public class BleData {
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
-//        Log.d(TAG,"修改用户名的返回的错误码："+errCode);
 
         if (errCode.equals("00")) {
             String nid  = datavalue.substring(0, 2);
@@ -611,17 +485,14 @@ public class BleData {
             username = ComTool.asciiToString(username);
             map.put("userNid", nid);
             map.put("username",username);
-//            Log.d(TAG,"修改用户名成功， nid："+ nid +",用户名："+ username);
         }
         return map;
     }
 
     /**
      * 创建数据成功的返回数据处理
-     * @param datavalue
-     * 0xFE 0X05 LEN NID TYPE ID PASSWORD/CARDID/指纹ID ERR_CODE checksum
      */
-    private LinkedHashMap createdData(String datavalue){
+    private LinkedHashMap<String, Object> createdData(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "05");
@@ -634,11 +505,9 @@ public class BleData {
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
-//        Log.d(TAG,"创建数据成功的返回的错误码："+errCode);
 
         if (errCode.equals("00")) {
             if (datavalue.length() <6){
-//                Log.d(TAG,"进入添加卡指纹模式的");
                 return map;
             }
             String nid  = datavalue.substring(0, 2);
@@ -681,10 +550,8 @@ public class BleData {
 
     /**
      * 删除数据成功的返回数据处理
-     * @param datavalue
-     * 0xFE 0x06 LEN TYPE ID ERR_CODE checksum
      */
-    private LinkedHashMap delData(String datavalue) {
+    private LinkedHashMap<String, Object> delData(String datavalue) {
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "06");
@@ -697,25 +564,20 @@ public class BleData {
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
 
-//        Log.d(TAG,"删除数据返回的错误码："+errCode);
-
         if (errCode.equals("00")) {
             String type     = datavalue.substring(0, 2);
             String sid      = datavalue.substring(2, 4);
 
             map.put("dataType", type);
             map.put("sid", sid);
-//            Log.d(TAG,"删除数据返回内容 type:"+ type + ", sid:" + sid );
         }
         return map;
     }
 
     /**
      * 修改密码的类型 ； 修改超级用户/普通用户的属性
-     * @param datavalue
-     * 0xFE 0X07 LEN TYPE ID ERR_CODE checksum
      */
-    private LinkedHashMap changeCodeType(String datavalue) {
+    private LinkedHashMap<String, Object> changeCodeType(String datavalue) {
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "07");
@@ -727,14 +589,12 @@ public class BleData {
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
-//        Log.d(TAG,"修改密码的类型返回的错误码："+errCode);
 
         if (errCode.equals("00")) {
             String type  = datavalue.substring(0, 2);
             String sid = datavalue.substring(2, 4);
             map.put("dataType", type);
             map.put("sid", sid);
-//            Log.d(TAG,"修改密码的类型返回内容 type:"+ type + ", sid:" + sid );
         }
         return map;
     }
@@ -742,10 +602,8 @@ public class BleData {
 
     /**
      * 密码验证,登录
-     * @param datavalue
-     * 0xFE 0X08 LEN TYPE NID  ID  password ERR_CODE checksum
      */
-    private LinkedHashMap loginResult(String datavalue) {
+    private LinkedHashMap<String, Object> loginResult(String datavalue) {
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "08");
@@ -757,11 +615,9 @@ public class BleData {
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
-//        Log.d(TAG,"登录 密码验证的错误码："+errCode);
 
         if (errCode.equals("00")) {
             if (datavalue.length() <6){
-//                Log.d(TAG,"密码验证,登录失败，返回内容不合法："+datavalue);
                 return map;
             }
 
@@ -776,7 +632,6 @@ public class BleData {
             map.put("sid",sid);
             map.put("code",code);
 
-//            Log.d(TAG,"登录 密码验证的返回内容，type："+type + " ,nid:"+nid + " ,sid:"+sid + " ,code"+code);
         }
         return map;
     }
@@ -784,10 +639,8 @@ public class BleData {
 
     /**
      * 绑定成功之后 是否自动创建用户
-     * @param datavalue
-     * 0xFE 0X09 LEN ENABLED ERR_CODE checksum
      */
-    private LinkedHashMap isAutoCreate(String datavalue){
+    private LinkedHashMap<String, Object> isAutoCreate(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "09");
@@ -799,7 +652,6 @@ public class BleData {
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
-//        Log.d(TAG,"绑定成功之后 是否自动创建用户的错误码："+errCode);
 
         if (errCode.equals("00")) {
             String enableAuto = datavalue.substring(0, 2);
@@ -811,10 +663,8 @@ public class BleData {
 
     /**
      * 开关门的返回结果
-     * @param datavalue
-     * 0xFE 0x0a LEN OP_TYPE TYPE ERR_CODE checksum
      */
-    private LinkedHashMap openOrClose(String datavalue){
+    private LinkedHashMap<String, Object> openOrClose(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "0a");
@@ -827,11 +677,9 @@ public class BleData {
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
 
-//        Log.d(TAG,"开关门的返回结果的错误码："+errCode);
-
         if (errCode.equals("00")) {
             String optype = datavalue.substring(0, 2);
-            String codetype = datavalue.substring(2, 4);
+          //  String codetype = datavalue.substring(2, 4);
             map.put("opType", optype);
           //  map.put("codeType", codetype);
         }
@@ -840,10 +688,8 @@ public class BleData {
 
     /**
      * 清空数据，用户、密码、卡、指纹、日志，恢复出厂设置
-     * @param datavalue
-     * 0xFE 0x0c LEN TYPE ERR_CODE checksum
      */
-    private LinkedHashMap clearData(String datavalue){
+    private LinkedHashMap<String, Object> clearData(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "0c");
@@ -865,10 +711,8 @@ public class BleData {
 
     /**
      * 修改密码的返回结果
-     * @param datavalue
-     * 0xFE 0x0d LEN NID TYPE ID PASSWORD ERR_CODE checksum
      */
-    private LinkedHashMap changeCode(String datavalue){
+    private LinkedHashMap<String, Object> changeCode(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "0d");
@@ -880,11 +724,9 @@ public class BleData {
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
-//        Log.d(TAG,"修改密码返回的错误码："+errCode);
 
         if (errCode.equals("00")) {
             if (datavalue.length() <6){
-//                Log.d(TAG,"修改密码失败，返回内容不合法："+datavalue);
                 return map;
             }
             String nid      = datavalue.substring(0, 2);
@@ -897,6 +739,13 @@ public class BleData {
             map.put("codeType", codetype);
             map.put("sid", sid);
             map.put("code", code);
+
+            //修改管理员密码，opendata需要同步更新
+            if (codetype.equals("01")){
+                String opendata = SinovoBle.getInstance().getLockSNO() + "01" + code;
+                String bindOpenData = getDataToEnctrypt("0a", opendata, SinovoBle.getInstance().getLockMAC()).toUpperCase();
+                map.put("opendata", bindOpenData);
+            }
         }
         return map;
     }
@@ -904,10 +753,8 @@ public class BleData {
 
     /**
      * 查看电量的结果返回处理
-     * @param datavalue
-     * 0xFE 0x0E LEN VALUE ERR_CODE checksum
      */
-    private LinkedHashMap checkPower(String datavalue){
+    private LinkedHashMap<String, Object> checkPower(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "0e");
@@ -919,7 +766,6 @@ public class BleData {
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
-//        Log.d(TAG,"查看电量的结果返回处理的错误码："+errCode);
 
         if (errCode.equals("00")) {
             String power = datavalue.substring(0, 2);
@@ -933,10 +779,8 @@ public class BleData {
 
     /**
      * 查看门锁状态
-     * @param datavalue
-     * 0xFE 0x0F LEN VALUE ERR_CODE checksum
      */
-    private LinkedHashMap lockStatus(String datavalue){
+    private LinkedHashMap<String, Object> lockStatus(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "0f");
@@ -948,7 +792,6 @@ public class BleData {
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
-//        Log.d(TAG,"查看门锁状态的错误码："+errCode);
 
         if (errCode.equals("00")) {
             String lockStatus = datavalue.substring(0, 2);
@@ -959,10 +802,8 @@ public class BleData {
 
     /**
      * 校准/查询时间
-     * @param datavalue
-     * 0xFE 0x10 LEN YY MM DD HH MM SS ERR_CODE checksum
      */
-    private LinkedHashMap calcTime(String datavalue){
+    private LinkedHashMap<String, Object> calcTime(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "10");
@@ -973,7 +814,6 @@ public class BleData {
         }
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
-//        Log.d(TAG,"校准/查询时间的错误码："+errCode);
 
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
         map.put("lockSno", SinovoBle.getInstance().getLockSNO());
@@ -990,10 +830,8 @@ public class BleData {
 
     /**
      * 设置锁的蓝牙名称
-     * @param datavalue
-     * 0xFE 0x11 LEN NAME ERR_CODE checksum
      */
-    private LinkedHashMap setLockName(String datavalue){
+    private LinkedHashMap<String, Object> setLockName(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "11");
@@ -1004,14 +842,11 @@ public class BleData {
         }
         String errCode = datavalue.substring(len-2, len);
         map.put("errCode", errCode);
-
-//        Log.d(TAG,"设置锁的蓝牙名称的错误码："+errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
 
         if (errCode.equals("00")) {
             String lockname = datavalue.substring(0,len-2);
             lockname = ComTool.asciiToString(lockname);
-//            Log.d(TAG,"设置锁的蓝牙名称:"+ lockname);
             map.put("lockName", lockname);
             SinovoBle.getInstance().setLockName(lockname);
         }
@@ -1021,10 +856,8 @@ public class BleData {
 
     /**
      * 查询管理员密码是否存在
-     * @param datavalue
-     * 0xFE 0x12 LEN  NID ID password ERR_CODE checksum
      */
-    private LinkedHashMap checkAdmin(String datavalue){
+    private LinkedHashMap<String, Object> checkAdmin(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "12");
@@ -1050,21 +883,14 @@ public class BleData {
             map.put("sid", sid);
             map.put("code", pass);
 
-//            Log.d(TAG,"管理员存在，其信息 nid:"+ nid + ",sid："+sid +",password:"+pass);
         }
         return map;
     }
 
     /**
      * 同步用户数据、绑定手机数据
-     * @param datavalue
-     * 0xFE 0x13 LEN TYPE NID ID USERNAME ERR_CODE checksum
-     * 0xFE 0x13 LEN TYPE NID ID PASSWORD ERR_CODE checksum
-     * 0xFE 0x13 LEN TYPE NID ID CARDID ERR_CODE checksum
-     * 0xFE 0x13 LEN TYPE NID ID FINGERID ERR_CODE checksum
-     * 0xFE 0x13 LEN TYPE NID ID PHONE_ID ERR_CODE checksum
      */
-    private LinkedHashMap syncData(String datavalue){
+    private LinkedHashMap<String, Object> syncData(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "13");
@@ -1079,7 +905,6 @@ public class BleData {
 
         if (errCode.equals("00")) {
             if (datavalue.length() <6){
-//                Log.d(TAG,"同步用户数据失败，返回内容不合法："+datavalue);
                 return map;
             }
             String dataNID,storeID,syncData,dataType;
@@ -1103,10 +928,8 @@ public class BleData {
 
     /**
      * 数据同步结束
-     * @param datavalue
-     * 0xFE 0x14  LEN  TYPE  USER_MTIME  ERR_CODE checksum
      */
-    private LinkedHashMap syncDataFinish(String datavalue){
+    private LinkedHashMap<String, Object> syncDataFinish(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "14");
@@ -1132,10 +955,8 @@ public class BleData {
 
     /**
      * APP获取锁端用户、已绑定手机的最新修改时间信息
-     * @param datavalue
-     * 0xFE 0x15 LEN TYPE COUNT YY MM DD HH MM SS ERR_CODE checksum
      */
-    private LinkedHashMap getLastFixedTime(String datavalue){
+    private LinkedHashMap<String, Object> getLastFixedTime(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "15");
@@ -1161,10 +982,8 @@ public class BleData {
 
     /**
      * 修改自动锁门时间
-     * @param datavalue
-     * 0xFE 0x16 LEN TIME ERR_CODE checksum
      */
-    private LinkedHashMap autolocktime(String datavalue){
+    private LinkedHashMap<String, Object> autolocktime(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "16");
@@ -1187,19 +1006,9 @@ public class BleData {
 
     /**
      * 日志同步
-     * @param datavalue
-     * 0xFE 0x17 LEN ID LOG_TYPE YY MM DD HH mm CONTENT checksum
-     * ID 日志的存储id
-     * LOG_TYPE 日志类型，09为开门日志， 0a为告警日志， 0b为操作日志
-     * YY MM DD HH mm 日志的时间， 精确到分钟
-     * CONTENT 为日志的内容
-     * 如果
-     * 1、开门日志时，CONTENT 由 TYPE、PASSWORD/CardID/FingerID 组成
-     * 2、告警日志时，CONTENT 由 WARM_TYPE 组成, 1个字节
-     * 3、操作日志时，CONTENT 由 OP_TYPE、OP_Content 组成；其中 OP_TYPE表示操作类型，1字节； OP_Content 6字节
      *
      */
-    private LinkedHashMap syncLog(String datavalue){
+    private LinkedHashMap<String, Object> syncLog(String datavalue){
 
         Log.w(TAG,"同步过来的日志，已解密的内容："+ datavalue);
         int len = datavalue.length();
@@ -1267,10 +1076,8 @@ public class BleData {
 
     /**
      * 日志同步结束
-     * @param datavalue
-     * 0xFE 0x18  LEN ERR_CODE checksum
      */
-    private LinkedHashMap syncLogFinish(String datavalue){
+    private LinkedHashMap<String, Object> syncLogFinish(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "18");
@@ -1289,10 +1096,8 @@ public class BleData {
 
     /**
      * 查看固件版本号
-     * @param datavalue
-     * 0xFE 0x1A  LEN  VER1  VER2  YY  MM  DD  HW_TYPE  ERR_CODE  checksum
      */
-    private LinkedHashMap checkFirmware(String datavalue){
+    private LinkedHashMap<String, Object> checkFirmware(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "1a");
@@ -1333,10 +1138,8 @@ public class BleData {
 
     /**
      * 蓝牙绑定删除，清空
-     * @param datavalue
-     * 0xFE 0x1B  LEN  STOID  ERR_CODE  checksum
      */
-    private LinkedHashMap delBoundPhone(String datavalue){
+    private LinkedHashMap<String, Object> delBoundPhone(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "06");
@@ -1360,10 +1163,8 @@ public class BleData {
 
     /**
      * 查询/设置静音模式
-     * @param datavalue
-     * 0xFE 0x1C  LEN ENABLED  ERR_CODE checksum
      */
-    private LinkedHashMap muteMode(String datavalue){
+    private LinkedHashMap<String, Object> muteMode(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "1c");
@@ -1385,10 +1186,8 @@ public class BleData {
 
     /**
      * 查看/设置基准时间
-     * @param datavalue
-     * 0xFE 0x1F LEN YY MM DD HH mm SS ERR_CODE checksum
      */
-    private LinkedHashMap baseTime(String datavalue) {
+    private LinkedHashMap<String, Object> baseTime(String datavalue) {
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "1f");
@@ -1416,10 +1215,8 @@ public class BleData {
 
     /**
      * 启用/禁用 分享密码
-     * @param datavalue
-     * 0xFE 0x20 LEN  ENABLED  PASSWORD  ERR_CODE checksum
      */
-    private LinkedHashMap operateSharedCode(String datavalue) {
+    private LinkedHashMap<String, Object> operateSharedCode(String datavalue) {
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "20");
@@ -1445,10 +1242,8 @@ public class BleData {
 
     /**
      * 查询锁端的mac地址
-     * @param datavalue
-     * 0xFE 0x21  LEN  M1 M2 M3 M4 M5 M6  ERR_CODE checksum
      */
-    private LinkedHashMap getLockMAC(String datavalue) {
+    private LinkedHashMap<String, Object> getLockMAC(String datavalue) {
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "21");
@@ -1474,10 +1269,8 @@ public class BleData {
 
     /**
      * 查询/设置超级用户权限
-     * @param datavalue
-     * 0xFE 0x23  LEN  PRIVILEGE ERR_CODE checksum
      */
-    private LinkedHashMap checkSuperUser(String datavalue){
+    private LinkedHashMap<String, Object> checkSuperUser(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "23");
@@ -1501,10 +1294,8 @@ public class BleData {
 
     /**
      * 授权新用户
-     * @param datavalue
-     * 0xFE 0x26  LEN  TYPE NID CODE username  ERR_CODE checksum
      */
-    private LinkedHashMap authorOther(String datavalue){
+    private LinkedHashMap<String, Object> authorOther(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "26");
@@ -1537,10 +1328,8 @@ public class BleData {
 
     /**
      * 查询锁是否被锁死，冻结了，连续5次开门失败，则冻结锁3分钟
-     * @param datavalue
-     * 0xFE 0x2b  LEN  enable checksum
      */
-    private LinkedHashMap lockIsFrozen(String datavalue){
+    private LinkedHashMap<String, Object> lockIsFrozen(String datavalue){
         int len = datavalue.length();
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("funCode", "2b");
@@ -1588,36 +1377,11 @@ public class BleData {
 
     /**
      * 将指令进行加密
-     * @param funcode
-     * @param data
+     * @param funcode FC
+     * @param data  DATA
      */
     public String  getDataToEnctrypt(String funcode, String data, String mac){
-        StringBuilder data_send = new StringBuilder(data);
-        int byteLen = data.length() /2;
-        byteLen += data.length() %2;
-
-        //如果data 不够16字节，则在后面补ff
-        for (int i=32;i> data.length(); i--) {
-            data_send.append("f");
-        }
-        Log.d(TAG, "getDataToEnctrypt 需要发送的数据，在补f之后："+data_send + ",长度："+data_send.length());
-
-        Log.d(TAG, "准备加密的mac："+mac);
-        data_send = new StringBuilder(SinovoBle.getInstance().getMyJniLib().encryptAes(data_send.toString(), mac));
-//        data_send = new StringBuilder(encryptData(data_send.toString(), mac));
-
-        Log.d(TAG, "需要发送的数据，加密后："+data_send);
-
-        String data_result = "fe" +funcode ;
-        if (byteLen<16){
-            data_result = data_result + "0"+ Integer.toHexString(byteLen) + data_send;
-        }else {
-            data_result = data_result + Integer.toHexString(byteLen) + data_send;
-        }
-
-        data_result = data_result +checkSum(data_result);
-
-        return data_result;
+        return SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data, mac.replace(":",""));
     }
 
 }
