@@ -396,6 +396,9 @@ public class MqttLib {
             }
         }
 
+        //先关闭 tcp socket 发包的功能，待网关bug解决后再开启， 20210330
+        sendByMqtt = true;
+
         if (isMqttOK){
             if (sendByMqtt) {
                 Log.d(TAG, "send command via mqtt:" + json.toString());
@@ -431,6 +434,8 @@ public class MqttLib {
             }
         }
 
+        //先关闭 tcp socket 发包的功能，待网关bug解决后再开启， 20210330
+        sendByMqtt = true;
         if (isMqttOK){
             if (sendByMqtt) {
                 Log.d(TAG, "send command via mqtt: " + jsonData);
@@ -711,10 +716,6 @@ public class MqttLib {
      * @param logID  ，表示当前的日志id ,日志量比较大，所以支持从指定的id开始同步，如果 id为 ff ，则同步所有的日志
      */
     public void getLog(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String logID){
-        if (logID.isEmpty()){
-            Log.e(TAG,"Parameter error");
-            return;
-        }
 
         String data = sno + logID;
         String datasend = mqttCommand("17", data, mac);
@@ -843,7 +844,7 @@ public class MqttLib {
     }
 
     public String mqttCommand(String funcode, String data,String mac){
-        String data_result = SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data, mac.replace(":",""));
+        String data_result = SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data.toLowerCase(), mac.replace(":",""));
         Log.d(TAG, "mqttCommand 生成的命令："+ data_result);
         return data_result;
     }

@@ -113,7 +113,7 @@ public class BleData {
         Log.d(TAG, "准备进行解密 接收到的密文：" + data + ",解密的mac：" + mac.toUpperCase());
 
         //3、获取出来功能码 , 并进行解密处理
-        String dataDecode = SinovoBle.getInstance().getMyJniLib().decryptAes(data, mac.toUpperCase());
+        String dataDecode = SinovoBle.getInstance().getMyJniLib().decryptAes(data.toLowerCase(), mac.toUpperCase());
 
         if (dataDecode.contains("error")){
             map.put("errCode", "-3");
@@ -236,8 +236,9 @@ public class BleData {
      */
     public void exeCommand(String funcode, String data, boolean toTop){
         String lockmac = SinovoBle.getInstance().getLockMAC().replace(":","");
-        String data_result = SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data, lockmac);
-        Log.d(TAG, "准备加密的mac："+lockmac + ", 加密的结果："+ data_result);
+
+        String data_result = SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data.toLowerCase(), lockmac);
+        Log.d(TAG, "准备加密的mac："+ lockmac+"功能码："+funcode + ",data："+ data.toLowerCase() + ", 加密的结果："+ data_result);
         //先判断 此命令是否已经存在队列中，如果已经存在，则不再加入
         if (!commandList.contains(data_result)){
             //命令需要查到队首
@@ -383,6 +384,7 @@ public class BleData {
 
         //绑定时，用户没有按set导致超时 失败，也需要 取消 定时检测
         if (errCode.equals("04")){
+            SinovoBle.getInstance().getToConnectLockList().clear();
             SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
         }
         return map;
@@ -461,7 +463,6 @@ public class BleData {
         }
         return map;
     }
-
 
     /**
      * 修改用户名
@@ -598,7 +599,6 @@ public class BleData {
         }
         return map;
     }
-
 
     /**
      * 密码验证,登录
@@ -1006,7 +1006,6 @@ public class BleData {
 
     /**
      * 日志同步
-     *
      */
     private LinkedHashMap<String, Object> syncLog(String datavalue){
 
@@ -1381,7 +1380,7 @@ public class BleData {
      * @param data  DATA
      */
     public String  getDataToEnctrypt(String funcode, String data, String mac){
-        return SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data, mac.replace(":",""));
+        return SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data.toLowerCase(), mac.replace(":",""));
     }
 
 }

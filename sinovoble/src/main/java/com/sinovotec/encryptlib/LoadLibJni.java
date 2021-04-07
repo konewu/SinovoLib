@@ -28,4 +28,5 @@ public class LoadLibJni {
     public native String getIntervalCode(String lockmac, String starttime, String endtime, String codetype);     //generate  periodic code
 
     public native String IsChkSumOK(String sourceStr);
+
 }

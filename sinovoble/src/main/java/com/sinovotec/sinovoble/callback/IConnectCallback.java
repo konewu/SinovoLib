@@ -92,4 +92,7 @@ public interface IConnectCallback {
     //手机屏幕锁屏
     void onScreenOff();
 
+    //连接test
+//    void onConnectTest(String result);
+
 }

@@ -17,7 +17,6 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Objects;
 
 public class TcpSocket {
@@ -101,10 +100,8 @@ public class TcpSocket {
                         writer = socket.getOutputStream();
                         isConnected = true;
                         tcpSendHander.removeCallbacksAndMessages(null);    //取消定时任务
-//                        Log.w(TAG, "tcpSocket连接成功，开始检测数据");
 
                         if (isServerClose()) {
-//                            Log.i(TAG, "TCP Socket连接已经断开2");
                             sendFaild(cmd);
                             closeSocket();
                         }else {
@@ -122,7 +119,6 @@ public class TcpSocket {
 
                             while (true) {
                                 if (isServerClose()) {
-//                                    Log.i(TAG, "TCP Socket连接已经断开3");
                                     sendFaild(cmd);
                                     break;
                                 }
@@ -180,7 +176,7 @@ public class TcpSocket {
                                     }
 
                                     if (!cmd.isEmpty()) {
-                                        Map sendMap = JSON.parseObject(cmd);
+                                        JSONObject sendMap = JSON.parseObject(cmd);
                                         boolean sendOK = false;   //标记是否正确收到回复，然后发送下一条
 
                                         String[] tcparray = msgFromTcp.split("[}]");
@@ -188,8 +184,7 @@ public class TcpSocket {
                                             msgSub = msgSub + "}";
                                             if (ComTool.isJson(msgSub)) {
                                                 //需要判断 服务器回复过来的数据功能码 是否与发送的一致
-                                                Map resultMap = JSON.parseObject(msgSub);
-                                                Log.e(TAG, "返回的数据的type：" + Objects.requireNonNull(resultMap.get("type")));
+                                                JSONObject resultMap = JSON.parseObject(msgSub);
                                                 //发给网关处理的数据
                                                 if (Objects.requireNonNull(resultMap.get("type")).toString().equals("get_lock_connect_status") ||
                                                         Objects.requireNonNull(resultMap.get("type")).toString().equals("disconnectLock") ||

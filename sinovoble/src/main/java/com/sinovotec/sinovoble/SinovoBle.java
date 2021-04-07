@@ -53,6 +53,7 @@ public class SinovoBle {
     private boolean isScanAgain = false;          //扫描停止后是否继续扫描
     private boolean isConnected = false;          //是否已经连接成功, 已经可以发送命令了
     private boolean isLinked    = false;          //是否连接上了，第一步连接上与否， 下面还需要 发现服务，设置 读写属性才能发送命令
+    private boolean isScanOnly  = false;          //仅仅进行蓝牙扫描，不连接
 
     private boolean isConnectting = false;        //是否正在连接
     private String connectTime = "";              //记录下连接的时间
@@ -79,9 +80,8 @@ public class SinovoBle {
     private  LoadLibJni myJniLib;
 
     /**
-     * 单例方式获取蓝牙通信入口
-     *
-     * @return 返回ViseBluetooth
+     * Instantiate  SinovoBle class
+     * @return SinovoBle
      */
     public static SinovoBle getInstance() {
         if (instance == null) {
@@ -323,8 +323,12 @@ public class SinovoBle {
         setScanAgain(true);
 
         //绑定模式下，设置绑定超时检测
-        if (isBindMode()) {
-            bindTimeoutHandler.postDelayed(this::checkScanResult, 60*1000);
+        if (isBindMode() && !isScanOnly()) {
+            bindTimeoutHandler.postDelayed(this::checkScanResult, 90*1000);
+        }
+
+        if (isBindMode() && isScanOnly()) {
+            bindTimeoutHandler.postDelayed(this::checkScanResult, 10*1000);
         }
 
         //扫描的函数
@@ -333,8 +337,8 @@ public class SinovoBle {
 
     //绑定超时检测
     private void checkScanResult(){
-        Log.e(TAG,"绑定超时检测，超时为1分钟");
-        if (!isBleConnected()){
+        Log.e(TAG,"绑定超时检测，超时为1分钟, isconnecting:" + isConnectting);
+        if (!isBleConnected() && !isScanOnly()){
             Log.d(TAG,"绑定超时检测，需要告知回调");
             LinkedHashMap<String, Object> map = new LinkedHashMap<>();
             map.put("scanResult", "0");
@@ -342,6 +346,28 @@ public class SinovoBle {
             setBindMode(false);
             getmBleScanCallBack().onScanTimeout(JSONObject.toJSONString(map));
         }
+
+        if (isScanOnly()){
+            setScanAgain(false);
+            setBindMode(false);
+            getmBleScanCallBack().onScanOnlyFinish();
+        }
+    }
+
+    /**
+     * * Bluetooth scan only
+     */
+    public void bleScanOnly(){
+        if (SinovoBle.getInstance().getBindTimeoutHandler() != null) {
+            SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
+        }
+        setScanOnly(true);
+        setScanAgain(true);
+        setBindMode(true);
+        setUserIMEI("");
+        toConnectLockList.clear();
+        disconnBle();
+        startBleScan();
     }
 
     /**
@@ -353,6 +379,7 @@ public class SinovoBle {
         if (SinovoBle.getInstance().getBindTimeoutHandler() != null) {
             SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
         }
+        setScanOnly(false);
         setScanAgain(true);
         setBindMode(true);
         setLockQRCode(qrcode);
@@ -376,6 +403,7 @@ public class SinovoBle {
         if (SinovoBle.getInstance().getBindTimeoutHandler() != null) {
             SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
         }
+        setScanOnly(false);
         setScanAgain(true);
         setBindMode(true);
         setLockQRCode(qrcode);
@@ -395,15 +423,14 @@ public class SinovoBle {
     public void connectLockViaMacSno(final ArrayList<BleConnectLock> autoConnectList, Boolean connectViaScan){
         if (mBleScanCallBack == null || mConnCallBack ==null){
             Log.e(TAG,"ScanCallBack or mConnCallBack is null");
-
             //出错了，需要提示客户
             return;
         }
 
-
         //保存用户指定的 自动连接锁列表
         setToConnectLockList(autoConnectList);
 
+        setScanOnly(false);
         setBindMode(false);
         if (connectViaScan) {
             Log.d(TAG,"Scan first according to setup needs");
@@ -427,9 +454,7 @@ public class SinovoBle {
                 connectBle(device);
 
                 //目前测试来看，最长超时返回为 31s，绝对部分是 30s
-                autoConnetHandler.postDelayed(() -> {
-                    BleConnCallBack.getInstance().disConectBle();
-                }, 33*1000);
+                autoConnetHandler.postDelayed(() -> BleConnCallBack.getInstance().disConectBle(), 33*1000);
             }
         }
     }
@@ -442,7 +467,6 @@ public class SinovoBle {
         }
 
         if (SinovoBle.getInstance().getLockSNO().length() != 6){
-            Log.e(TAG,"SNO error");
             return -1;
         }
         return 0;
@@ -677,6 +701,7 @@ public class SinovoBle {
      *                 08 get the mute setting
      *                 09 get the auto-create setting
      *                 10 get the superUser's priority
+     *                 11 get the basetime of the lock
      */
     public int getLockInfo(String dataType){
         int result = checkEnvir();
@@ -695,6 +720,7 @@ public class SinovoBle {
         if (dataType.equals("08")){ BleData.getInstance().exeCommand("1c", data, false); }
         if (dataType.equals("09")){ BleData.getInstance().exeCommand("09", data, false); }
         if (dataType.equals("10")){ BleData.getInstance().exeCommand("23", data, false); }
+        if (dataType.equals("11")){ BleData.getInstance().exeCommand("1f", data, false); }
 
         return 0;
     }
@@ -733,10 +759,6 @@ public class SinovoBle {
      * @param logID  ，表示当前的日志id ,日志量比较大，所以支持从指定的id开始同步，如果 id为 ff ，则同步所有的日志
      */
     public int getLog(String logID){
-        if (logID.isEmpty()){
-            Log.e(TAG,"Parameter error");
-            return 2;
-        }
 
         int result = checkEnvir();
         if (result !=0){
@@ -750,23 +772,22 @@ public class SinovoBle {
 
     /**
      * 启用/禁用 动态密码
-     * @param enable  00 表示禁用， 01 表示启动
      * @param dynamicCode  对应的 动态密码
+     * @param enable  00 表示禁用， 01 表示启动
      */
-    public int doDynamicCode(String dynamicCode, String enable){
+    public void doDynamicCode(String dynamicCode, String enable){
         if (dynamicCode.isEmpty() ||!(enable.equals("00") || enable.equals("01"))){
             Log.e(TAG,"Parameter error");
-            return 2;
+            return;
         }
 
         int result = checkEnvir();
         if (result !=0){
-            return result;
+            return;
         }
 
         String data = SinovoBle.getInstance().getLockSNO() + enable + dynamicCode;
         BleData.getInstance().exeCommand("20", data, false);
-        return 0;
     }
 
 
@@ -906,6 +927,87 @@ public class SinovoBle {
         BleConnCallBack.getInstance().disConectBle();
     }
 
+    //生成区间动态密码
+    /**
+     * Calculate periodic code
+     * @param lockmac  lock mac address, such as 00A051F4D44A
+     * @param starttime  start time, such as 12:23
+     * @param endtime    end time, such as 12:23
+     * @return code
+     */
+    public String calcDyCode(String lockmac, String starttime, String endtime){
+        ArrayList<String> codetypelist = new ArrayList<>();
+        codetypelist.add("2");
+        codetypelist.add("5");
+        codetypelist.add("8");
+
+        String result ;
+        int rndNum =  Integer.parseInt(ComTool.getRndNumber(1,2,10)) ;
+        String codeType  = codetypelist.get(rndNum);
+
+        String starttime_tmp = starttime.replace(" ","");
+        String endtime_tmp = endtime.replace(" ","");
+
+        long diff = ComTool.calDateDiff(5,starttime_tmp,endtime_tmp);
+
+        //区间密码的结束时间 必须比 开始时间大 10分钟以上
+        if (diff <10*60){
+            return "Error:The end time must be more than 10 minutes longer than the start time";
+        }
+
+        if ((starttime_tmp.length() == 5 && starttime_tmp.contains(":")) && (endtime_tmp.length() == 5 && endtime_tmp.contains(":"))){
+            String macaddr = lockmac.replace(":","");
+            result =  myJniLib.getIntervalCode(macaddr, starttime, endtime, codeType);
+        }else {
+            result = "Error:The time format is wrong, such as 12:34";
+        }
+
+        return result;
+    }
+
+    /**
+     * Calculate one-time code or Timed code
+     * @param lockmac lock mac address, such as 00A051F4D44A
+     * @param basetime basetime， such as 2021-03-23 19:14
+     * @param starttime start time, such as 2020-07-08 17:18
+     * @param valid  Effective time period, such as 3 Days, 1 Hours,  1 Months
+     * @param type  0: one-time 1:Timed code
+     * @return code
+     */
+    public String calcDyCode(String lockmac, String basetime,  String starttime, String valid, int type){
+
+        ArrayList<String> codetypelist = new ArrayList<>();
+        if (type == 0) {
+            codetypelist.add("3");
+            codetypelist.add("6");
+            codetypelist.add("9");
+        }else {
+            codetypelist.add("1");
+            codetypelist.add("4");
+            codetypelist.add("7");
+        }
+        String result = "";
+
+        int rndNum =  Integer.parseInt(ComTool.getRndNumber(1,2,10)) ;
+        String codeType = codetypelist.get(rndNum);
+        String validTmp = valid.replace("Days","d").replace("Hours","h").replace("Months","m");
+
+        String[] starttime_ary = starttime.split(" ");
+        if ((starttime_ary.length == 2 && starttime.contains(":"))){
+            long diff = ComTool.getTimeDiff(basetime, starttime, 1);
+            String validV = validTmp.split(" ")[0];
+            String validT = validTmp.split(" ")[1];
+            if (diff > 0){
+                String macaddr = lockmac.replace(":","");
+                result = myJniLib.getDyCode(macaddr, String.valueOf(diff), starttime, validV, validT, codeType);
+            }else {
+                result = "Error: Basetime cannot be later than start time";
+            }
+        }else {
+            result = "Error: The format of the start time is incorrect";
+        }
+        return  result;
+    }
 
     /**
      *  定义扫描的实现逻辑；
@@ -1072,4 +1174,11 @@ public class SinovoBle {
         this.connectingMac = connectingMac;
     }
 
+    public boolean isScanOnly() {
+        return isScanOnly;
+    }
+
+    public void setScanOnly(boolean scanOnly) {
+        isScanOnly = scanOnly;
+    }
 }

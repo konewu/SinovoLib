@@ -5,8 +5,11 @@ public interface IScanCallBack {
     void onDeviceFound(String scanResult);
 
     //扫描完成
-   // void onScanFinish(BluetoothLeDeviceStore bluetoothLeDeviceStore);
+    void onScanOnlyFinish();
 
     //扫描超时
     void onScanTimeout(String scanResult);
+
+    //测试
+//    void onScanTest(String scanResult);
 }

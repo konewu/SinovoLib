@@ -62,65 +62,9 @@ public class HttpLib {
         return accessToken;
     }
 
-//    public String getAppRegion() {
-//        return appRegion;
-//    }
-//
-//    public String getDeviceName() {
-//        return deviceName;
-//    }
-//
-//    public String getDeviceSecret() {
-//        return deviceSecret;
-//    }
-//
-//    public String getProductKey() {
-//        return productKey;
-//    }
-//
-//    public String getPublishtopic() {
-//        return publishtopic;
-//    }
-//
-//    public String getSubscribeTopic() {
-//        return subscribeTopic;
-//    }
-//
-//    public String getReflashToken() {
-//        return reflashToken;
-//    }
-
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
     }
-
-//    public void setAppRegion(String appRegion) {
-//        this.appRegion = appRegion;
-//    }
-//
-//    public void setDeviceName(String deviceName) {
-//        this.deviceName = deviceName;
-//    }
-//
-//    public void setDeviceSecret(String deviceSecret) {
-//        this.deviceSecret = deviceSecret;
-//    }
-//
-//    public void setProductKey(String productKey) {
-//        this.productKey = productKey;
-//    }
-//
-//    public void setPublishtopic(String publishtopic) {
-//        this.publishtopic = publishtopic;
-//    }
-//
-//    public void setSubscribeTopic(String subscribeTopic) {
-//        this.subscribeTopic = subscribeTopic;
-//    }
-//
-//    public void setReflashToken(String reflashToken) {
-//        this.reflashToken = reflashToken;
-//    }
 
     //http post request without access_token
     private  String post(String url, String json) throws IOException {
@@ -164,7 +108,6 @@ public class HttpLib {
      * to Send Data With Thread
      */
     private void toSendDataWithThread(String cmdStr){
-      //  Map mapTypes = JSON.parseObject(cmdStr);
         Map<String, Object> mapTypes = JSON.parseObject(cmdStr);
 
         final String url        = Objects.requireNonNull(mapTypes.get("url")).toString();
@@ -376,7 +319,6 @@ public class HttpLib {
         toSendDataWithThread(cmdString);
     }
 
-
     /**
      * delete gateway
      * @param gatewayID    the gateway's ID
@@ -472,25 +414,6 @@ public class HttpLib {
         String cmdString = new JSONObject(cmdMap).toString();
         toSendDataWithThread(cmdString);
     }
-
-
-//    public void getLockListByGW(String gatewayID){
-//        String urlPath = "/api/User/getDeviceList";
-//        final String url = serverIP + urlPath;
-//
-//        LinkedHashMap<String, Object> cmdMap = new LinkedHashMap<>();
-//        cmdMap.put("url",url);
-//        cmdMap.put("token","01");
-//        cmdMap.put("funcode","10");
-//
-//        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-//        map.put("gateway_id", gatewayID);
-//        cmdMap.put("data",new JSONObject(map));
-//
-//        String cmdString = new JSONObject(cmdMap).toString();
-//        toSendDataWithThread(cmdString);
-//
-//    }
 
     /**
      * Get the list of lock for the user

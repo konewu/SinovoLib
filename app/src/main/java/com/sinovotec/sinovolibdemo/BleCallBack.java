@@ -33,6 +33,11 @@ public class BleCallBack {
         }
 
         @Override
+        public void onScanOnlyFinish() {
+
+        }
+
+        @Override
         public void onScanTimeout(String scanResult) {
 
         }

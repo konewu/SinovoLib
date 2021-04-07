@@ -54,42 +54,38 @@ public class BleScanCallBack extends ScanCallback {
                     public void onScanResult(int callbackType, ScanResult result) {
                         BleScanDevice bleScanDevice = analyzeScanResult(result);
 
-                        for (int i = 0; i< SinovoBle.getInstance().getScanLockList().size(); i++){
-                            if (SinovoBle.getInstance().getScanLockList().get(i).GetDevice().getAddress().equals(bleScanDevice.GetDevice().getAddress())){
-                                LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-                                map.put("scanResult", "1");
-                                map.put("lockMac", bleScanDevice.GetDevice().getAddress());
-                                map.put("lockType", bleScanDevice.GetDevice().getName());
+                        if (!SinovoBle.getInstance().isScanOnly()){
+                            for (int i = 0; i< SinovoBle.getInstance().getScanLockList().size(); i++){
+                                if (SinovoBle.getInstance().getScanLockList().get(i).GetDevice().getAddress().equals(bleScanDevice.GetDevice().getAddress())){
 
-                                iScanCallBack.onDeviceFound(JSONObject.toJSONString(map));
+                                    //尝试进行自动连接
+                                    if (SinovoBle.getInstance().isBindMode()) {
+                                        Log.w(TAG, "绑定模式下，自动进行连接："+bleScanDevice.GetDevice().getAddress());
+                                        SinovoBle.getInstance().setScanAgain(false);
+                                        BleScanCallBack.getInstance(iScanCallBack).stopScan();
+                                        SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
+                                    }else {
+                                        Log.w(TAG, "非绑定模式下，getToConnectLockList size："+ SinovoBle.getInstance().getToConnectLockList().size());
+                                        for (BleConnectLock bleConnectLock : SinovoBle.getInstance().getToConnectLockList()){
+                                            String mac = bleConnectLock.getLockMac();
+                                            Log.w(TAG,"lockmac:"+ mac + ",ble mac:"+ bleScanDevice.GetDevice().getAddress());
+                                            if (bleScanDevice.GetDevice().getAddress().equals(mac)){
 
-                                //尝试进行自动连接
-                                if (SinovoBle.getInstance().isBindMode()) {
-                                    Log.w(TAG, "绑定模式下，自动进行连接："+bleScanDevice.GetDevice().getAddress());
-                                    Log.w(TAG, "开始连接之前，先停止扫描");
-                                    SinovoBle.getInstance().setScanAgain(false);
-                                    BleScanCallBack.getInstance(iScanCallBack).stopScan();
-                                    SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
-                                }else {
-                                    Log.w(TAG, "非绑定模式下，getToConnectLockList size："+ SinovoBle.getInstance().getToConnectLockList().size());
-                                    for (BleConnectLock bleConnectLock : SinovoBle.getInstance().getToConnectLockList()){
-                                        String mac = bleConnectLock.getLockMac();
-                                        Log.w(TAG,"lockmac:"+ mac + ",ble mac:"+ bleScanDevice.GetDevice().getAddress());
-                                        if (bleScanDevice.GetDevice().getAddress().equals(mac)){
+                                                Log.w(TAG, "开始进行之前，先停止扫描");
+                                                SinovoBle.getInstance().setScanAgain(false);
+                                                BleScanCallBack.getInstance(iScanCallBack).stopScan();
 
-                                            Log.w(TAG, "开始进行之前，先停止扫描");
-                                            SinovoBle.getInstance().setScanAgain(false);
-                                            BleScanCallBack.getInstance(iScanCallBack).stopScan();
-
-                                            Log.w(TAG, "开始进行自动连接:"+ bleScanDevice.GetDevice().getAddress());
-                                            SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
-                                            break;
+                                                Log.w(TAG, "开始进行自动连接:"+ bleScanDevice.GetDevice().getAddress());
+                                                SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
+                                                break;
+                                            }
                                         }
                                     }
+                                    break;
                                 }
-                                break;
                             }
                         }
+
                     }
 
                     @Override
@@ -111,7 +107,7 @@ public class BleScanCallBack extends ScanCallback {
         int mRssi = result.getRssi();
         BluetoothDevice scanLock = result.getDevice();
         String scanLockMac  = scanLock.getAddress();
-        String scanLockName = scanLock.getName();
+        String scanLockType = scanLock.getName();
 
         if (mScanRecord != null) {
             SparseArray<byte[]> mandufacturerDatas = mScanRecord.getManufacturerSpecificData();
@@ -119,7 +115,20 @@ public class BleScanCallBack extends ScanCallback {
                 manufacturerData = mandufacturerDatas.get(i);
             }
         }
-        Log.d(TAG, "Scan result：{ Mac address:" +scanLockMac + " Lock name："+scanLockName + " Rssi:"+mRssi + " Adv_data:"+byte2hex(manufacturerData)+"}");
+
+        String madvData = byte2hex(manufacturerData);
+        String qrcode = "";
+        if (madvData.length() >12){
+            qrcode = madvData.substring(0,12);
+        }
+
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        map.put("lockMac", scanLockMac);
+        map.put("lockType", scanLockType);
+        map.put("Rssi", mRssi);
+        map.put("qrcode", qrcode);
+        iScanCallBack.onDeviceFound(JSONObject.toJSONString(map));
+        Log.d(TAG, "Scan result：{ Mac address:" +scanLockMac + " Lock name："+scanLockType + " Rssi:"+mRssi + " Adv_data:"+byte2hex(manufacturerData)+"}");
 
         //将扫描到的设备 放入到 list中
         boolean deviceExist = false;

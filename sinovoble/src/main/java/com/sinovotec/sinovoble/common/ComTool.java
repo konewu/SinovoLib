@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
+import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -27,7 +27,6 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Random;
-import java.util.TimeZone;
 
 public class ComTool {
 
@@ -402,6 +401,103 @@ public class ComTool {
             }
         }
         return connectType;
+    }
+
+    /***
+     * 计算两个时间差，返回的是的秒s
+     * date2 - date1 的时间差
+     *
+     * @return long
+     * @param date1 s
+     * @param date2 s
+     */
+    public static long calDateDiff(int dateForm, String date1, String date2) {
+        long diff = 0;
+        Date d1;
+        Date d2;
+
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
+        switch (dateForm) {
+            case 0:
+                simpleDateFormat = new SimpleDateFormat("yyMMddHHmmss", Locale.ROOT);
+                break;
+            case 1:
+                simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
+                break;
+            case 3:
+                simpleDateFormat = new SimpleDateFormat("yyMMddHHmm", Locale.ROOT);
+                break;
+            case 4:
+                simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ROOT);
+                break;
+            case 5:
+                simpleDateFormat = new SimpleDateFormat("HH:mm", Locale.ROOT);
+                break;
+            case 6:
+                simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.ROOT);
+                break;
+            case 7:
+                simpleDateFormat = new SimpleDateFormat("yy-MM-dd", Locale.ROOT);
+                break;
+            case 8:
+                simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
+                break;
+        }
+
+        try {
+            d1 = simpleDateFormat.parse(date1);
+            d2 = simpleDateFormat.parse(date2);
+
+            // 毫秒ms
+            if (d2 != null && d1 != null) {
+                diff = d2.getTime() - d1.getTime();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return diff / 1000;
+    }
+
+
+    /*
+     *  计算两个时间的时间差，以分钟来计算
+     *  参数：两个时间格式（yyyy-MM-dd HH:mm）的字符串，time1，time2；
+     *  计算出 time2 与time1 之间的时间差； time2 时间必须比time1 晚
+     *  函数返回值为 long类型，返回时间差
+     *
+     *  flag =1 .表示 yyyy-MM-dd HH:mm
+     *  flag =2 .表示 yyyy-MM-dd HH:mm:ss
+     */
+    public static long getTimeDiff(String baseTime, String starttime, int flag) {
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ROOT);
+
+        if (flag == 2) {
+            df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
+        }
+        long diff = 0;
+        try {
+            Date d_s = df.parse(starttime);
+            Date d_b = df.parse(baseTime);
+            if (d_s != null && d_b != null) {
+                Log.d("SinovoLib", "起始时间的时间戳：" + d_s.getTime() + " 结束时间时间戳：" + d_b.getTime());
+
+                if (flag == 1) {
+                    diff = (d_s.getTime() - d_b.getTime()) / (60 * 1000);  //得到的结果是 以分钟为单位
+                } else {
+                    diff = (d_s.getTime() - d_b.getTime()) / 1000;  //得到的结果是 以秒为单位
+                }
+            }
+        } catch (Exception e) {
+            Log.e("SinovoLib", "计算时间差出错：" + e.toString());
+        }
+
+        Log.d("SinovoLib", "时间差：" + diff);
+        if (diff >= 0)
+            return diff;
+        else
+            return -1;
     }
 
 }
