@@ -238,7 +238,7 @@ public class BleData {
         String lockmac = SinovoBle.getInstance().getLockMAC().replace(":","");
 
         String data_result = SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data.toLowerCase(), lockmac);
-        Log.d(TAG, "准备加密的mac："+ lockmac+"功能码："+funcode + ",data："+ data.toLowerCase() + ", 加密的结果："+ data_result);
+       // Log.d(TAG, "准备加密的mac："+ lockmac+"功能码："+funcode + ",data："+ data.toLowerCase() + ", 加密的结果："+ data_result);
         //先判断 此命令是否已经存在队列中，如果已经存在，则不再加入
         if (!commandList.contains(data_result)){
             //命令需要查到队首
@@ -303,8 +303,7 @@ public class BleData {
      * 命令发送之后，2秒后进行检查，是否受到恢复
      */
     public  void checkDataReceive(){
-        Log.e(TAG, "发送命令完成后，1.5秒没有收到回复，现在检查是否需要重试或是删除");
-
+        Log.e(TAG, "发送命令完成后，2秒没有收到回复");
         setExeCmding(false);
         SinovoBle.getInstance().getmConnCallBack().onReceiveDataFailed();
     }
@@ -387,6 +386,7 @@ public class BleData {
             SinovoBle.getInstance().getToConnectLockList().clear();
             SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
         }
+
         return map;
     }
 
@@ -705,6 +705,10 @@ public class BleData {
         if (errCode.equals("00")) {
             String dataType = datavalue.substring(0, 2);
             map.put("dataType", dataType);
+            if (dataType.equals("0c")){
+                //恢复出厂设置
+                SinovoBle.getInstance().setLockSNO("");
+            }
         }
         return map;
     }

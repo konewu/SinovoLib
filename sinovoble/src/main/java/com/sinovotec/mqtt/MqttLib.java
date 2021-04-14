@@ -449,6 +449,21 @@ public class MqttLib {
         }
     }
 
+
+    /**
+     * 直接推送数据到服务器端
+     * @param jsonData string
+     */
+    public void pushDataToMqtt(final String jsonData){
+        if (isMqttOK){
+            Log.d(TAG, "pushDataToMqtt via mqtt: " + jsonData);
+            publishMessage(jsonData);
+        }else{
+            Log.d(TAG, "MQTT is not ready, it cann't send command:" + jsonData);
+        }
+    }
+
+
     private void checkDataReceive(String dataType){
         if (dataType.equals("send2lock")){
             Log.d(TAG,"The command sent to lock over mqtt has timed out, 20s");

@@ -47,7 +47,7 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
-    implementation 'com.alibaba:fastjson:1.1.72.android'        //fastjson 解析库
+    implementation 'com.alibaba:fastjson:1.2.40'        //fastjson 解析库
     implementation("com.squareup.okhttp3:okhttp:4.9.0")
 
 }

@@ -85,7 +85,6 @@ public class BleScanCallBack extends ScanCallback {
                                 }
                             }
                         }
-
                     }
 
                     @Override

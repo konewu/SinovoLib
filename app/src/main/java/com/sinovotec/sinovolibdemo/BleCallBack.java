@@ -4,6 +4,7 @@ import android.os.Message;
 import android.util.Log;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.sinovotec.sinovoble.callback.IConnectCallback;
 import com.sinovotec.sinovoble.callback.IScanCallBack;
 
@@ -131,10 +132,10 @@ public class BleCallBack {
 
         @Override
         public void onUnlock(String result) {
-            //unlock result:{"funCode":"0a","errCode":"00","lockMac":"00A051F4E7E0","opType":"01","codeType":"00"}
             Log.w(TAG,"unlock result:"+ result);
 
-            Map maps = (Map) JSON.parse(result);
+        //    Map<String, Object> maps = (Map<String, Object>) JSON.parse(result);
+            JSONObject maps = JSONObject.parseObject(result);
             String funCode = Objects.requireNonNull(maps.get("funCode")).toString();
             String errCode = Objects.requireNonNull(maps.get("errCode")).toString();
 

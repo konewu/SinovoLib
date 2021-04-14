@@ -20,7 +20,7 @@ import okhttp3.Response;
 
 public class HttpLib {
 
-    private static final String TAG = "Sinovoble";
+    private static final String TAG = "SinovoHttp";
     private static final String serverIP = "https://gws.qiksmart.com";
     private static final MediaType mediaType = MediaType.get("application/json; charset=utf-8");
     private final OkHttpClient httpClient = new OkHttpClient();
@@ -117,10 +117,14 @@ public class HttpLib {
 
         new Thread(() -> {
             try {
-                String result ;
-                Log.d(TAG, "http post,url:"+url + ", postData:" + postData);
+                String result = "";
+                Log.i(TAG, "http post,url:"+url + ", postData:" + postData);
                 if (token.equals("01")){
-                    result = postWithHeader(url, postData, getAccessToken());
+                    if (getAccessToken() !=null) {
+                        result = postWithHeader(url, postData, getAccessToken());
+                    }else {
+                        callback(funcode,connfailed("ERROR: accessToken is null"));
+                    }
                 }else {
                     result = post(url, postData);
                 }
@@ -143,6 +147,11 @@ public class HttpLib {
                 break;
             case 1:
                 httpLibCallback.onUserLogin(resultStr);
+                JSONObject mapTypes = JSONObject.parseObject(resultStr);
+
+                if (mapTypes.containsKey("access_token")){
+                    this.accessToken = Objects.requireNonNull(mapTypes.get("access_token")).toString();
+                }
                 break;
             case 2:
                 httpLibCallback.onGetVerifyCode(resultStr);
@@ -472,6 +481,8 @@ public class HttpLib {
         cmdMap.put("data",new JSONObject(map));
 
         String cmdString = new JSONObject(cmdMap).toString();
+
+        Log.i(TAG, "准备更新用户消息："+ cmdString);
         toSendDataWithThread(cmdString);
     }
 

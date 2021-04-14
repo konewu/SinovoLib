@@ -82,7 +82,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
                             if(status == BluetoothGatt.GATT_SUCCESS) {
                                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                                     Log.i(TAG, "Connected to GATT server. try discover Services");
-//                                    SinovoBle.getInstance().getmConnCallBack().onConnectTest("ble connected.  try to find Services");
 
                                     if (!SinovoBle.getInstance().isLinked()){
                                         afterConnected();
@@ -362,7 +361,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
             if (serUUID.equals(BleConstant.SERVICE_UUID_FM67)) {
                 sUUID = BleConstant.SERVICE_UUID_FM67;
                 characteristUUID = BleConstant.CHARACTERISTIC_UUID_FM67;
-//                Log.d(TAG, "根据过滤出来的服务UUID，检测到当前连接的是FM67");
+                Log.d(TAG, "根据过滤出来的服务UUID，检测到当前连接的是FM67");
                 break;
             }
         }
@@ -451,9 +450,11 @@ public class BleConnCallBack extends BluetoothGattCallback {
                     SinovoBle.getInstance().getScanLockList().clear();
                     SinovoBle.getInstance().getmConnCallBack().onConnectLockViaQRCode(JSON.toJSONString(jsonObject));
                 }else {
-                    //绑定的时候，如果不是绑定成功的，则添加到已经绑定过的列表中
+                  //  绑定的时候，如果不是绑定成功的，则添加到已经绑定过的列表中
                     SinovoBle.getInstance().getBondBleMacList().add(SinovoBle.getInstance().getLockMAC());
                     SinovoBle.getInstance().getScanLockList().remove(0);  //删除对首的设备，
+                    //再次开启扫描 发现新设备来连接
+                    SinovoBle.getInstance().bleScan(SinovoBle.getInstance().getmBleScanCallBack());
                 }
             }
         }
@@ -461,17 +462,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
         //处理绑定之后的自动创建用户
         if (Objects.equals(funCode, "01")){
             Log.d(TAG, "jsonObject 数据：" + jsonObject);
-//            if (jsonObject.containsKey("codeType")){
-//                String codeType = jsonObject.getString("codeType");
-//                if (codeType.equals("01")){
-//                    String code = jsonObject.getString("code");
-//
-//                    String opendata = lockSno + "01"+code;
-//                    String bindOpenData = BleData.getInstance().getDataToEnctrypt("0a",opendata, lockmac).toUpperCase();
-//                    String openBackData = BleData.getInstance().getDataToEnctrypt("0a","0100",lockmac).toUpperCase();
-//
-//                }
-//            }
             SinovoBle.getInstance().getmConnCallBack().onConnectLockViaQRCode(JSON.toJSONString(jsonObject));
         }
 
@@ -501,8 +491,8 @@ public class BleConnCallBack extends BluetoothGattCallback {
         }
 
         //查询锁端的信息
-        if (Objects.equals(funCode, "0e")|| Objects.equals(funCode, "0f")|| Objects.equals(funCode, "12")||
-                Objects.equals(funCode, "1a")|| Objects.equals(funCode, "21") || Objects.equals(funCode, "09")|| Objects.equals(funCode, "10")||Objects.equals(funCode, "11")||
+        if (Objects.equals(funCode, "0e")|| Objects.equals(funCode, "0f")|| Objects.equals(funCode, "12")||Objects.equals(funCode, "1a")||
+                Objects.equals(funCode, "21") || Objects.equals(funCode, "09")|| Objects.equals(funCode, "10")||Objects.equals(funCode, "11")||
                 Objects.equals(funCode, "16")|| Objects.equals(funCode, "1c")|| Objects.equals(funCode, "1f")||Objects.equals(funCode, "23")){
             SinovoBle.getInstance().getmConnCallBack().onLockInfo(JSON.toJSONString(jsonObject));
         }

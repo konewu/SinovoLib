@@ -79,6 +79,7 @@ public class SinovoBle {
 
     private  LoadLibJni myJniLib;
 
+
     /**
      * Instantiate  SinovoBle class
      * @return SinovoBle
