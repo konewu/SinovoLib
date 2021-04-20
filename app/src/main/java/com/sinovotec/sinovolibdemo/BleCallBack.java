@@ -3,12 +3,10 @@ package com.sinovotec.sinovolibdemo;
 import android.os.Message;
 import android.util.Log;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.sinovotec.sinovoble.callback.IConnectCallback;
 import com.sinovotec.sinovoble.callback.IScanCallBack;
 
-import java.util.Map;
 import java.util.Objects;
 
 public class BleCallBack {
@@ -71,7 +69,7 @@ public class BleCallBack {
         @Override
         public void onConnectLockViaQRCode(String result) {
             Log.w(TAG,"add lock's result:"+ result);
-            Map maps = (Map) JSON.parse(result);
+            JSONObject maps = JSONObject.parseObject(result);
             String funCode = Objects.requireNonNull(maps.get("funCode")).toString();
             String errCode = Objects.requireNonNull(maps.get("errCode")).toString();
 
@@ -142,7 +140,7 @@ public class BleCallBack {
             if (funCode.equals("0a") && errCode.equals("00")){
                 String opType = Objects.requireNonNull(maps.get("opType")).toString();
                 MyApp.getInstance().setLockStatus(opType);
-                String msg = "";
+                String msg ;
                 if (opType.equals("01")){
                     msg = "Unlocked";
                     callHandler(5,"Lock");
@@ -162,7 +160,7 @@ public class BleCallBack {
         @Override
         public void onLockInfo(String result) {
             Log.w(TAG,"onRequestLockInfo result:"+ result);
-            Map maps = (Map) JSON.parse(result);
+            JSONObject maps = JSONObject.parseObject(result);
             String funCode = Objects.requireNonNull(maps.get("funCode")).toString();
             String errCode = Objects.requireNonNull(maps.get("errCode")).toString();
 
@@ -280,6 +278,66 @@ public class BleCallBack {
 
         @Override
         public void onScreenOff() {
+
+        }
+
+        @Override
+        public void onDFUDeviceConnecting(String result) {
+
+        }
+
+        @Override
+        public void onDFUDeviceConnected(String result) {
+
+        }
+
+        @Override
+        public void onDfuProcessStarting(String result) {
+
+        }
+
+        @Override
+        public void onDfuProcessStarted(String result) {
+
+        }
+
+        @Override
+        public void onDFUEnablingDfuMode(String result) {
+
+        }
+
+        @Override
+        public void onDFUProgressChanged(int progress) {
+
+        }
+
+        @Override
+        public void onDFUFirmwareValidating(String result) {
+
+        }
+
+        @Override
+        public void onDFUDeviceDisconnecting(String result) {
+
+        }
+
+        @Override
+        public void onDFUDeviceDisconnected(String result) {
+
+        }
+
+        @Override
+        public void onDfuCompleted(String result) {
+
+        }
+
+        @Override
+        public void onDfuAborted(String result) {
+
+        }
+
+        @Override
+        public void onDFUError(String s, int i, int i1, String s1) {
 
         }
     };

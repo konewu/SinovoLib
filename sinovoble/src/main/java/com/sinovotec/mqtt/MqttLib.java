@@ -449,7 +449,6 @@ public class MqttLib {
         }
     }
 
-
     /**
      * 直接推送数据到服务器端
      * @param jsonData string
@@ -462,7 +461,6 @@ public class MqttLib {
             Log.d(TAG, "MQTT is not ready, it cann't send command:" + jsonData);
         }
     }
-
 
     private void checkDataReceive(String dataType){
         if (dataType.equals("send2lock")){
@@ -593,7 +591,6 @@ public class MqttLib {
         String datasend = mqttCommand("0d", data, mac);
         getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
     }
-
 
     /**
      * 设置锁的相关属性
@@ -837,7 +834,6 @@ public class MqttLib {
      *                  00 表示清空用户，不会删除管理员
      *                  0e 表示清空所有的绑定手机
      *                  0c 表示恢复出厂设置
-     *
      */
     public void cleanData(String gatewayid, String gwip,String gwWifiSSID, String type, String uuid, String mac, String sno, String datakType){
         if (datakType.isEmpty()){

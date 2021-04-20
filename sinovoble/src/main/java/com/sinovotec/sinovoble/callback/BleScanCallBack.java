@@ -135,6 +135,7 @@ public class BleScanCallBack extends ScanCallback {
         //判断扫描到的锁 是不是已经存在扫描列表中，如果已经存在，则更新其信息
         for (int i = 0; i < SinovoBle.getInstance().getScanLockList().size(); i++) {
             BleScanDevice bleScanDevice = SinovoBle.getInstance().getScanLockList().get(i);
+            Log.d(TAG, "XXSD getScanLockList() 中锁的地址："+ bleScanDevice.GetDevice().getAddress());
             if (bleScanDevice.GetDevice().getAddress().compareTo(scanLockMac)== 0){
                 String nowtime = getNowTime();
                 bleScanDevice.ReflashInf(scanLock, mRssi, manufacturerData, nowtime);
@@ -201,6 +202,7 @@ public class BleScanCallBack extends ScanCallback {
                 deviceIn = false;   //默认不符合加入
                 for (int i = 0; i< SinovoBle.getInstance().getToConnectLockList().size(); i++){
                     BleConnectLock myConnectLock = SinovoBle.getInstance().getToConnectLockList().get(i);
+                    Log.d(TAG, "自动连接连接中锁的mac：" + myConnectLock.getLockMac());
                     if (myConnectLock.getLockMac().equals(scanLockMac)){
                         Log.d(TAG,"该设备是需要自动连接的设备："+ scanLockMac);
                         deviceIn = true;

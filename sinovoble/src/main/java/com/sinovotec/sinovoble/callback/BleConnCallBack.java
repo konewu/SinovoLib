@@ -517,6 +517,11 @@ public class BleConnCallBack extends BluetoothGattCallback {
             SinovoBle.getInstance().getmConnCallBack().onRequestLog(JSON.toJSONString(jsonObject));
         }
 
+        //进入固件 升级模式 dfu ota
+        if (Objects.equals(funCode, "19")){
+            SinovoBle.getInstance().getmConnCallBack().onLockInfo(JSON.toJSONString(jsonObject));
+        }
+
         //启用禁用 动态密码的 返回结果
         if (Objects.equals(funCode, "20")){
             SinovoBle.getInstance().getmConnCallBack().onDynamicCodeStatus(JSON.toJSONString(jsonObject));

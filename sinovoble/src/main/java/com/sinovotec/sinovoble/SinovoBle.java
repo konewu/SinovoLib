@@ -29,12 +29,17 @@ import com.sinovotec.sinovoble.common.BleScanDevice;
 import com.sinovotec.sinovoble.common.BluetoothListenerReceiver;
 import com.sinovotec.sinovoble.common.ComTool;
 import com.sinovotec.encryptlib.LoadLibJni;
+import com.sinovotec.sinovoble.common.DfuUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 
-public class SinovoBle {
+import androidx.annotation.NonNull;
+import no.nordicsemi.android.dfu.DfuProgressListener;
+
+public class SinovoBle  {
     private final String TAG = "SinovoBle";
     private String lockQRCode ;                   //锁的二维码，用户输入的，用于添加锁的
     private String userIMEI;                      //手机的imei，作为手机id
@@ -45,6 +50,7 @@ public class SinovoBle {
     private String lockFirmVersion;
     private String lockType;
     private String lockGWid = "";                 //锁对应的网关id
+    private String appFilePath = "";              // APP保存升级包的目录
 
     private String bleServiceUUID;                //蓝牙服务的UUID
     private String blecharacteristUUID;           //蓝牙特征字的UUID
@@ -269,6 +275,73 @@ public class SinovoBle {
         this.connType = connType;
     }
 
+    public String getAppFilePath() {
+        return appFilePath;
+    }
+
+    private final DfuProgressListener progressListener = new DfuProgressListener() {
+        @Override
+        public void onDeviceConnecting(@NonNull String s) {
+            mConnCallBack.onDFUDeviceConnecting(s);
+        }
+
+        @Override
+        public void onDeviceConnected(@NonNull String s) {
+            mConnCallBack.onDFUDeviceConnected(s);
+        }
+
+        @Override
+        public void onDfuProcessStarting(@NonNull String s) {
+            mConnCallBack.onDfuProcessStarting(s);
+        }
+
+        @Override
+        public void onDfuProcessStarted(@NonNull String s) {
+            mConnCallBack.onDfuProcessStarted(s);
+        }
+
+        @Override
+        public void onEnablingDfuMode(@NonNull String s) {
+            mConnCallBack.onDFUEnablingDfuMode(s);
+        }
+
+        @Override
+        public void onProgressChanged(@NonNull String s, int i, float v, float v1, int i1, int i2) {
+            mConnCallBack.onDFUProgressChanged(i);
+        }
+
+        @Override
+        public void onFirmwareValidating(@NonNull String s) {
+            mConnCallBack.onDFUFirmwareValidating(s);
+        }
+
+        @Override
+        public void onDeviceDisconnecting(String s) {
+            mConnCallBack.onDFUDeviceDisconnecting(s);
+        }
+
+        @Override
+        public void onDeviceDisconnected(@NonNull String s) {
+            mConnCallBack.onDFUDeviceDisconnected(s);
+        }
+
+        @Override
+        public void onDfuCompleted(@NonNull String s) {
+            mConnCallBack.onDfuCompleted(s);
+        }
+
+        @Override
+        public void onDfuAborted(@NonNull String s) {
+            mConnCallBack.onDfuAborted(s);
+        }
+
+        @Override
+        public void onError(@NonNull String s, int i, int i1, String s1) {
+            mConnCallBack.onDFUError(s, i, i1, s1);
+        }
+    };
+
+
     /**
      * Initialize Ble
      * @param context context
@@ -287,8 +360,13 @@ public class SinovoBle {
             BluetoothListenerReceiver receiver = new BluetoothListenerReceiver();
             context.registerReceiver(receiver,makeFilter());
 
-            phoneIMEI = ComTool.createDir("SinovoBle");
+            appFilePath = Objects.requireNonNull(context.getExternalFilesDir("SinovoLib")).getPath();
+            phoneIMEI = ComTool.createDir(appFilePath);
         }
+
+
+        //先注册进度以及升级状态回调
+        DfuUtils.getInstance().setmDfuProgressListener(context,progressListener);//升级状态回调
 
         return (bluetoothAdapter !=null && mBleScanCallBack !=null && mConnCallBack !=null);
     }
@@ -387,7 +465,7 @@ public class SinovoBle {
         if (!userIMEI.isEmpty()) {
             setUserIMEI(userIMEI);
         }else {
-            phoneIMEI = ComTool.createDir("SinovoBle");
+            phoneIMEI = ComTool.createDir(appFilePath);
             setUserIMEI(phoneIMEI);
         }
 
@@ -408,7 +486,7 @@ public class SinovoBle {
         setScanAgain(true);
         setBindMode(true);
         setLockQRCode(qrcode);
-        phoneIMEI = ComTool.createDir("SinovoBle");
+        phoneIMEI = ComTool.createDir(appFilePath);
         setUserIMEI(phoneIMEI);
 
         toConnectLockList.clear();
@@ -617,6 +695,7 @@ public class SinovoBle {
      *                     permission of manager user: data is 02，03，06，07，10，11，14，15
      *                     permission of setting: data is 04，05，06，07，12，13，14，15
      *                     permission of checking log: data is 08，09，10，11，12，13，14，15
+     *                 07 set the lock into DFU OTA , update Firmware
      * @param data  value
      */
     public int setLockInfo(String dataType, String data){
@@ -684,6 +763,12 @@ public class SinovoBle {
         if (dataType.equals("06")){
             String setData = SinovoBle.getInstance().getLockSNO() + data;
             BleData.getInstance().exeCommand("23", setData, false);
+        }
+
+        //设置进入ota升级模式
+        if (dataType.equals("07")){
+            String setData = SinovoBle.getInstance().getLockSNO() ;
+            BleData.getInstance().exeCommand("19", setData, false);
         }
 
         return 0;
@@ -987,7 +1072,7 @@ public class SinovoBle {
             codetypelist.add("4");
             codetypelist.add("7");
         }
-        String result = "";
+        String result;
 
         int rndNum =  Integer.parseInt(ComTool.getRndNumber(1,2,10)) ;
         String codeType = codetypelist.get(rndNum);
@@ -1125,6 +1210,43 @@ public class SinovoBle {
         Log.d(TAG, "connectGatt to：" + bluetoothDevice.getAddress());
     }
 
+
+    //进行 dfu 升级, dfu 升级的mac地址与正常通信的不一样，需要加+1
+    public void upgradeFW(Context context, String mac, String dfuPath){
+        String hexmac;
+        if (mac.contains(":")){
+            hexmac = mac.replace(":","");
+        }else {
+            hexmac = mac;
+        }
+
+        //将mac地址转16进制再加1
+        long macvaleu = Long.parseLong(hexmac,16) + 1;
+        String upmac = Long.toHexString(macvaleu);
+        StringBuilder upmacTmp = new StringBuilder();
+        for (int i=0; i<12-upmac.length();i++){
+            upmacTmp.append("0");
+        }
+
+        upmacTmp.append(upmac);
+        StringBuilder upMacAddress = new StringBuilder();
+        //加上冒号
+        for (int i=0; i<upmacTmp.length(); i++){
+            upMacAddress.append(upmacTmp.substring(i,i+1));
+            if (i%2 == 1 && i!= upmacTmp.length()-1){
+                upMacAddress.append(":");
+            }
+        }
+        Log.d(TAG,"生成的mac地址："+ upMacAddress);
+
+        DfuUtils.getInstance().startUpdate(context,upMacAddress.toString().toUpperCase(),"DfuTarg", dfuPath);
+    }
+
+    //取消升级
+    public void cancelUpgrade(Context context){
+        DfuUtils.getInstance().abortDevice(context);
+    }
+
     //对外提供断开连接
     public void disconnBle(){
         BleConnCallBack.getInstance().disConectBle();
@@ -1182,4 +1304,5 @@ public class SinovoBle {
     public void setScanOnly(boolean scanOnly) {
         isScanOnly = scanOnly;
     }
+
 }

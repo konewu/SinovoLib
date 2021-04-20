@@ -201,6 +201,9 @@ public class BleData {
         //日志同步结束
         if (funCode.equals("18")) {return syncLogFinish(datavalue);}
 
+        //进入升级模式
+        if (funCode.equals("19")) {return dfu_ota(datavalue);}
+
         //查看锁的固件版本
         if (funCode.equals("1a")) {return checkFirmware(datavalue);}
 
@@ -1093,6 +1096,28 @@ public class BleData {
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
 
+        return map;
+    }
+
+    /**
+     * 进入升级模式 dfu ota
+     */
+    private LinkedHashMap<String, Object> dfu_ota(String datavalue){
+        int len = datavalue.length();
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        map.put("funCode", "19");
+
+        if (len<2){
+            map.put("errCode", "01");   //数据长度有误
+            return map;
+        }
+        String errCode = datavalue.substring(len-2, len);
+        map.put("errCode", errCode);
+        map.put("lockMac", SinovoBle.getInstance().getLockMAC());
+
+        if (errCode.equals("00")) {
+            map.put("dfu", "01");
+        }
         return map;
     }
 

@@ -65,6 +65,12 @@ public interface HttpLibCallback {
     //管理员从服务器端彻底删除锁
     void onRemoveLock(String result);
 
+    //http get 请求
+    void onHttpGet(String result);
+
+    //http download file 下载文件
+    void onDownLoadFile(String result);
+
     //在服务器端添加锁的用户数据
 //    void onAddLockUser(String result);
 

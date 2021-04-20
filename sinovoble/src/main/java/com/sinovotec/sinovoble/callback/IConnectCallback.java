@@ -92,7 +92,35 @@ public interface IConnectCallback {
     //手机屏幕锁屏
     void onScreenOff();
 
-    //连接test
-//    void onConnectTest(String result);
+    //dfu 升级, 正在连接设备
+    void onDFUDeviceConnecting(String result);
+
+    void onDFUDeviceConnected(String result);
+
+    void onDfuProcessStarting(String result);
+
+    //dfu 升级, 开始升级
+    void onDfuProcessStarted(String result);
+
+    void onDFUEnablingDfuMode(String result);
+
+    //dfu 升级, 升级的进度结果
+    void onDFUProgressChanged(int progress);
+
+    void onDFUFirmwareValidating(String result);
+
+    void onDFUDeviceDisconnecting(String result);
+
+    //dfu 升级 蓝牙连接断开
+    void onDFUDeviceDisconnected(String result);
+
+    //dfu 升级 完成
+    void onDfuCompleted(String result);
+
+    //dfu 升级 取消
+    void onDfuAborted(String result);
+
+    //dfu 升级 错误
+    void onDFUError( String s, int i, int i1, String s1);
 
 }

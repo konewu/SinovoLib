@@ -6,8 +6,15 @@ import android.util.Log;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -62,10 +69,6 @@ public class HttpLib {
         return accessToken;
     }
 
-    public void setAccessToken(String accessToken) {
-        this.accessToken = accessToken;
-    }
-
     //http post request without access_token
     private  String post(String url, String json) throws IOException {
         RequestBody body = RequestBody.create(json, mediaType);
@@ -103,6 +106,104 @@ public class HttpLib {
         return json2.toString();
     }
 
+    /**
+     *get的方式请求
+     *@return 返回null 登录异常
+     */
+    private String httpGet(String path){
+        try {
+            URL url = new URL(path);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("GET");
+            //获得结果码
+            int responseCode = connection.getResponseCode();
+            if(responseCode ==200){
+                //请求成功 获得返回的流
+                InputStream is = connection.getInputStream();
+                return convertStreamToString(is);
+            }else {
+                //请求失败
+                return "";
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    /**
+     *get的方式请求
+     *@return 返回null 登录异常
+     */
+    private String httpDownDfuFile(String path, String locktype, String fmversion, String savePath) throws Exception {
+        try {
+            URL url = new URL(path);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("GET");
+
+            InputStream inStream = connection.getInputStream();// 通过输入流获取html数据
+            byte[] data = readInputStream(inStream);// 得到html的二进制数据
+
+            DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(savePath));//把byte写入文件
+            dataOutputStream.write(data);
+            dataOutputStream.flush();
+
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("srcFile",path);
+            jsonObject.put("localFile",savePath);
+            jsonObject.put("lockType",locktype);
+            jsonObject.put("fmversion",fmversion);
+            return jsonObject.toJSONString();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    /**
+     * http get  with thread
+     */
+    private void httpGetWithThread(String url){
+        new Thread(() -> {
+            Log.i(TAG, "http get,url:"+url);
+            String result = httpGet(url);
+            if (result.contains("!DOCTYPE html") || result.isEmpty()){
+                callback(21,connfailed("SYSTEM ERROR"));
+            }else {
+                callback(21,result);
+            }
+        }).start();
+    }
+
+    /**
+     * http get  with thread
+     */
+    private void httpDownloadWithThread(String url, String lockType, String fmversion ,String savaPath){
+        new Thread(() -> {
+            Log.i(TAG, "http download ,url:"+url);
+            String result = null;
+            try {
+                result = httpDownDfuFile(url, lockType, fmversion, savaPath);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            if (Objects.requireNonNull(result).contains("!DOCTYPE html") || result.isEmpty()){
+                callback(22,connfailed("SYSTEM ERROR"));
+            }else {
+                callback(22,result);
+            }
+        }).start();
+    }
+
+    /**
+     * http  get 请求，当前型号锁的 升级包
+     */
+    public void downfile(String filePath, String lockType, String fmversion ,String savePath){
+        String path = serverIP+"/dfu/"+filePath;
+        httpDownloadWithThread(path, lockType, fmversion, savePath);
+    }
 
     /**
      * to Send Data With Thread
@@ -208,6 +309,12 @@ public class HttpLib {
                 break;
             case 20:
                 httpLibCallback.onRemoveLock(resultStr);
+                break;
+            case 21:    //http get的返回
+                httpLibCallback.onHttpGet(resultStr);
+                break;
+            case 22:    //download file的返回
+                httpLibCallback.onDownLoadFile(resultStr);
                 break;
         }
     }
@@ -611,6 +718,15 @@ public class HttpLib {
         toSendDataWithThread(cmdString);
     }
 
+
+    /**
+     * http  get 请求，当前型号锁的 升级包
+     */
+    public void getDfuInfo(){
+        String path = serverIP+"/dfu/dfu.json";
+       httpGetWithThread(path);
+    }
+
     /*
      * bitmap转base64
      * */
@@ -642,4 +758,49 @@ public class HttpLib {
         }
         return result;
     }
+
+    /**
+     * 将输入流转 字符串
+     * @param is  InputStream
+     * @return String
+     */
+    public String convertStreamToString(InputStream is) {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        StringBuilder sb = new StringBuilder();
+        String line ;
+        try {
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append("\r\n");
+            }
+        } catch (IOException e){
+            e.printStackTrace();
+        }finally{
+            try{
+                is.close();
+            }catch(IOException e){
+                e.printStackTrace();
+            }
+        }
+        return sb.toString();
+    }
+
+
+
+    /**
+     * 从输入流中获取数据
+     * @param inStream 输入流
+     * @return 字节数组
+     * @throws Exception 异常
+     */
+    public byte[] readInputStream(InputStream inStream) throws Exception{
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        int len ;
+        while( (len=inStream.read(buffer)) != -1 ){
+            outStream.write(buffer, 0, len);
+        }
+        inStream.close();
+        return outStream.toByteArray();
+    }
+
 }

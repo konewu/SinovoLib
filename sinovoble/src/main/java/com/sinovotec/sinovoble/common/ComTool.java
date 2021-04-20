@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
@@ -29,6 +30,45 @@ import java.util.Objects;
 import java.util.Random;
 
 public class ComTool {
+
+    //计算 文件的 md5值
+    public static String getFileMD5(File file) {
+        if (!file.isFile()) {
+            return null;
+        }
+        MessageDigest digest ;
+        FileInputStream in ;
+        byte[] buffer = new byte[1024];
+        int len;
+        try {
+            digest = MessageDigest.getInstance("MD5");
+            in = new FileInputStream(file);
+            while ((len = in.read(buffer, 0, 1024)) != -1) {
+                digest.update(buffer, 0, len);
+            }
+            in.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return byte2hex(digest.digest());
+    }
+
+//    public static String bytesToHexString(byte[] src) {
+//        StringBuilder stringBuilder = new StringBuilder();
+//        if (src == null || src.length <= 0) {
+//            return null;
+//        }
+//        for (byte b : src) {
+//            int v = b & 0xFF;
+//            String hv = Integer.toHexString(v);
+//            if (hv.length() < 2) {
+//                stringBuilder.append(0);
+//            }
+//            stringBuilder.append(hv);
+//        }
+//        return stringBuilder.toString();
+//    }
 
     /**
      * 将字节转换为 16进制的 字符串
@@ -240,30 +280,30 @@ public class ComTool {
 
     /**
      * 创建目录文件夹
-     *
-     * @param dirname 文件夹
+     * @param dirPath 文件夹
      */
-    public static String createDir(String dirname) {
-        String storage = Environment.getExternalStorageDirectory().getPath() + "/" + dirname;
-        File dirFile = new File(storage);
+    public static String createDir(String dirPath) {
+
+        File dirFile = new File(dirPath);
         String imei = "";
 
+        Log.d("SinovoLib","准备的路径：" + dirPath);
         if (!dirFile.exists()) {
             try {
                 boolean mkdirs = dirFile.mkdirs();
                 if (mkdirs) {
-                    Log.e("SinovoLib", "文件夹 " + storage + " 创建成功");
-                    String filename = storage + "/imei.txt";
+                    Log.e("SinovoLib", "文件夹 " + dirPath + " 创建成功");
+                    String filename = dirPath + "/imei.txt";
                     imei = writeFileData(filename, generateIMEI());
                 } else {
-                    Log.e("SinovoLib", "文件夹 " + storage + " 创建失败");
+                    Log.e("SinovoLib", "文件夹 " + dirPath + " 创建失败");
                 }
             } catch (Exception e) {
-                Log.e("SinovoLib", "文件夹 " + storage + " 创建失败: " + e.getMessage());
+                Log.e("SinovoLib", "文件夹 " + dirPath + " 创建失败: " + e.getMessage());
             }
         } else {
-            Log.e("SinovoLib", "文件夹 " + storage + " 已经存在");
-            String filename = storage + "/imei.txt";
+            Log.e("SinovoLib", "文件夹 " + dirPath + " 已经存在");
+            String filename = dirPath + "/imei.txt";
             imei = writeFileData(filename, generateIMEI());
         }
         return imei;
