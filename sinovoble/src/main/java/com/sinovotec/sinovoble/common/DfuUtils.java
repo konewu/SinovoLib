@@ -15,7 +15,6 @@ import static android.content.Context.ACTIVITY_SERVICE;
 
 public class DfuUtils {
 
-    private final String TAG = "SinovoDfu";
     private static DfuUtils dfuUtils;
     private DfuServiceController serviceController;
     private DfuServiceInitiator starter;
@@ -54,6 +53,7 @@ public class DfuUtils {
         starter.setZip(filepath);
         serviceController = starter.start(mContext, DfuService.class);          //启动升级服务
 
+        String TAG = "SinovoDfu";
         Log.d(TAG,"开始了升级服务器： 升级服务是否在运行："+ isDfuServiceRunning(mContext));
     }
 
@@ -73,7 +73,7 @@ public class DfuUtils {
 
     /**
      * 判断dfu状态
-     * @return boole
+     * @return bool
      */
     private boolean isDfuServiceRunning(Context mContext) {
         final ActivityManager manager = (ActivityManager) mContext.getSystemService(ACTIVITY_SERVICE);

@@ -75,8 +75,13 @@ public class BleScanCallBack extends ScanCallback {
                                                 SinovoBle.getInstance().setScanAgain(false);
                                                 BleScanCallBack.getInstance(iScanCallBack).stopScan();
 
+                                                //add wrk 20210421,在开始连接某一把锁之后，就不能自动连接其他锁
+                                                SinovoBle.getInstance().getToConnectLockList().clear();
+                                                SinovoBle.getInstance().getToConnectLockList().add(bleConnectLock);
+
                                                 Log.w(TAG, "开始进行自动连接:"+ bleScanDevice.GetDevice().getAddress());
                                                 SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
+
                                                 break;
                                             }
                                         }

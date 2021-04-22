@@ -571,7 +571,7 @@ public class HttpLib {
     /**
      * Update the information of the login user
      */
-    public void updateLoginUserInfo(String nickname, String age, String gender, String address){
+    public void updateLoginUserInfo(String nickname, String age, String gender, String address, String shake_unlock, String vibration){
         String urlPath = "/api/User/addUserInfo";
         final String url = serverIP + urlPath;
 
@@ -585,6 +585,8 @@ public class HttpLib {
         map.put("age", age);
         map.put("gender", gender);
         map.put("location", address);
+        map.put("shake_unlock", shake_unlock);
+        map.put("vibration", vibration);
         cmdMap.put("data",new JSONObject(map));
 
         String cmdString = new JSONObject(cmdMap).toString();

@@ -512,7 +512,7 @@ public class SinovoBle  {
         setScanOnly(false);
         setBindMode(false);
         if (connectViaScan) {
-            Log.d(TAG,"Scan first according to setup needs");
+            Log.d(TAG,"根据设置，连接之前 同时开启扫描");
             SinovoBle.getInstance().startBleScan();
         }else {
             //只连接队列中的第一把锁，连接的时候 先停止蓝牙扫描，这样连接效率高一些，同时连接速度也快一些
@@ -1043,7 +1043,7 @@ public class SinovoBle  {
 
         if ((starttime_tmp.length() == 5 && starttime_tmp.contains(":")) && (endtime_tmp.length() == 5 && endtime_tmp.contains(":"))){
             String macaddr = lockmac.replace(":","");
-            result =  myJniLib.getIntervalCode(macaddr, starttime, endtime, codeType);
+            result =  getMyJniLib().getIntervalCode(macaddr, starttime, endtime, codeType);
         }else {
             result = "Error:The time format is wrong, such as 12:34";
         }
@@ -1072,7 +1072,7 @@ public class SinovoBle  {
             codetypelist.add("4");
             codetypelist.add("7");
         }
-        String result;
+        String result ;
 
         int rndNum =  Integer.parseInt(ComTool.getRndNumber(1,2,10)) ;
         String codeType = codetypelist.get(rndNum);
@@ -1085,7 +1085,7 @@ public class SinovoBle  {
             String validT = validTmp.split(" ")[1];
             if (diff > 0){
                 String macaddr = lockmac.replace(":","");
-                result = myJniLib.getDyCode(macaddr, String.valueOf(diff), starttime, validV, validT, codeType);
+                result = getMyJniLib().getDyCode(macaddr, String.valueOf(diff), starttime, validV, validT, codeType);
             }else {
                 result = "Error: Basetime cannot be later than start time";
             }
