@@ -60,10 +60,12 @@ public class GalleryFragment extends Fragment {
 
             String mac = macWithColon(macET.getText().toString());
             String sno = snoET.getText().toString();
+
+            MyApp.getInstance().setLockSno(sno);
             ArrayList<BleConnectLock>  autoConnetList = new ArrayList<>();
             BleConnectLock newlock = new BleConnectLock(mac.toUpperCase(),sno);
             autoConnetList.add(newlock);
-            SinovoBle.getInstance().connectLockViaMacSno(autoConnetList, false);
+            SinovoBle.getInstance().connectLockViaMacSno(autoConnetList);
 
             showProgressDialog("Connecting....");
         });
@@ -86,7 +88,7 @@ public class GalleryFragment extends Fragment {
             }
 
             MyApp.getInstance().setCode(code);
-            SinovoBle.getInstance().toUnlock(openType,code);
+            SinovoBle.getInstance().toUnlock(openType, code, MyApp.getInstance().getLockSno());
         });
 
         btn_chkpw.setOnClickListener(view -> {
@@ -94,7 +96,7 @@ public class GalleryFragment extends Fragment {
                 Toast.makeText(getActivity(), getResources().getString(R.string.unconnect), Toast.LENGTH_SHORT).show();
                 return;
             }
-            SinovoBle.getInstance().getLockInfo("02");
+            SinovoBle.getInstance().getLockInfo("02", MyApp.getInstance().getLockSno());
         });
 
 
@@ -104,7 +106,7 @@ public class GalleryFragment extends Fragment {
                 Toast.makeText(getActivity(), getResources().getString(R.string.unconnect), Toast.LENGTH_SHORT).show();
                 return;
             }
-            SinovoBle.getInstance().getLockInfo("04");
+            SinovoBle.getInstance().getLockInfo("04", MyApp.getInstance().getLockSno());
         });
 
         return root;

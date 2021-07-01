@@ -91,6 +91,8 @@ public class BleCallBack {
                 String lockQRCode   = Objects.requireNonNull(maps.get("lockQRCode")).toString();
                 String code     = Objects.requireNonNull(maps.get("code")).toString();
 
+                MyApp.getInstance().setLockSno(lockSno);
+
                 callHandler(0,"");
                 String resultshow = "Lock Mac: "+lockmac + "\nLock SNO: " + lockSno + "\nLock QRCode: " +lockQRCode + "\nCode: " +code;
 
@@ -216,10 +218,6 @@ public class BleCallBack {
 
         }
 
-        @Override
-        public void onAuthorOther(String result) {
-
-        }
 
         @Override
         public void onLockFrozen(String result) {

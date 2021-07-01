@@ -288,11 +288,7 @@ public class MqttLib {
         Log.e(TAG,"logoutMQTT disconnect mqtt，exit");
 
         //注销蓝牙连接
-        SinovoBle.getInstance().setScanAgain(false);
-        SinovoBle.getInstance().getToConnectLockList().clear();
-        if (SinovoBle.getInstance().isBleConnected()){
-            SinovoBle.getInstance().disconnBle();
-        }
+        SinovoBle.getInstance().disconnBle();
 
         //设置mqtt为 还没注册
         setMqttOK(false);
@@ -350,6 +346,7 @@ public class MqttLib {
         }
     }
 
+    //通知网关 断开与锁的蓝牙连接
     public void disconnectLock(String gatewayid, ArrayList<String> macList){
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("gateway_id", gatewayid);
@@ -595,7 +592,7 @@ public class MqttLib {
     /**
      * 设置锁的相关属性
      * @param dataType 设置类型
-     *                 01 设置锁名称，锁名称不能超过10个字符，如果为空，则表示查询锁端的时间
+     *                 01 设置锁名称，锁名称不能超过10个字符，如果为空，则表示查询锁名称
      *                 02 锁的时间，时间格式YYMMDDHHMMSS ，如果为空，则表示查询锁端的时间
      *                 03 自动锁门时间 ，范围 0-240 ；0表示关闭自动锁门
      *                 04 设置静音模式，其值 00关闭静音，01为开启静音，如果为空，则表示查询当前静音状态
@@ -649,9 +646,6 @@ public class MqttLib {
 
         //设置静音 和绑定后自动创建用户
         if (dataType.equals("04") || dataType.equals("05")){
-            if (data.isEmpty()){
-                data = "02";
-            }
             if (Integer.parseInt(data)<0 || Integer.parseInt(data)>2){
                 Log.e(TAG,"Parameter error");
                 return;
@@ -715,15 +709,6 @@ public class MqttLib {
     }
 
     /**
-     * 同步数据，包括用户信息 和绑定的手机
-     */
-    public void getAllBoundPhone(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno){
-        String data = sno +"0e";
-        String datasend = mqttCommand("13", data, mac);
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
-    }
-
-    /**
      * 同步日志
      * @param logID  ，表示当前的日志id ,日志量比较大，所以支持从指定的id开始同步，如果 id为 ff ，则同步所有的日志
      */
@@ -770,20 +755,17 @@ public class MqttLib {
             return;
         }
 
-        String datasend = "";
+        String data = "";
         if (newCodeType.equals("02")){
-            String data = sno + oldCodeType + codeID + "00";
-            datasend = mqttCommand("07", data, mac);
+            data = sno + oldCodeType + codeID + "00";
         }
         if (newCodeType.equals("03")){
-            String data = sno + oldCodeType + codeID + "01";
-            datasend = mqttCommand("07", data, mac);
+            data = sno + oldCodeType + codeID + "01";
         }
         if (newCodeType.isEmpty()){
-            String data = sno + oldCodeType + codeID + "02";
-            datasend = mqttCommand("07", data, mac);
+            data = sno + oldCodeType + codeID + "02";
         }
-
+        String datasend = mqttCommand("07", data, mac);
         getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
 
     }

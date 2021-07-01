@@ -74,6 +74,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
                             super.onConnectionStateChange(gatt, status, newState);
                             Log.d(TAG,"BleConnCallBack：GATT："+gatt.getDevice().getAddress() + " status:"+status + " newstate:"+newState);
+
                             if (SinovoBle.getInstance().getAutoConnetHandler() != null) {
                                // Log.w(TAG,"取消 自动连接超时检测");
                                 SinovoBle.getInstance().getAutoConnetHandler().removeCallbacksAndMessages(null);
@@ -133,10 +134,11 @@ public class BleConnCallBack extends BluetoothGattCallback {
                         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                             super.onServicesDiscovered(gatt, status);
 
+                            Log.e(TAG, "发现服务的回调" + status);
                             if (status == BluetoothGatt.GATT_SUCCESS) {
                                 afterDiscoverService(gatt);
                             } else {
-//                                SinovoBle.getInstance().getmConnCallBack().onConnectTest("Discovered Services Failed");
+                                disConectBle();
                                 Log.e(TAG, " Discovered Services Failed, errcode:" + status);
                                 //错误码中返回 129 ，需要关闭蓝牙，在重新打开
                                 if (status == 129) {
@@ -212,8 +214,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
                             if (status == BluetoothGatt.GATT_SUCCESS) {
                                 Log.d(TAG, "onDescriptorWrite successful, it can send commands");
 
-//                                SinovoBle.getInstance().getmConnCallBack().onConnectTest("connect ok, send data");
-
                                 SinovoBle.getInstance().setLockMAC(macaddress);
                                 BleData.getInstance().getCommandList().clear();
 
@@ -247,7 +247,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                                     }
                                     SinovoBle.getInstance().setLockSNO(bleSno);
 
-                                    //清空自动连接的列表，或许断开只能重连它，不能连接其他设备，除非手动切换
+                                    //清空自动连接的列表，断开只能重连它，不能连接其他设备，除非手动切换
                                     SinovoBle.getInstance().getToConnectLockList().clear();
                                     BleConnectLock myAutoConnectLock = new BleConnectLock(bleMac, bleSno);
                                     SinovoBle.getInstance().getToConnectLockList().add(myAutoConnectLock);
@@ -282,7 +282,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
             Log.d(TAG, "it's connected,Ignore repeated notifications of successful connection");
             return;
         }
-
         BleData.getInstance().setExeCmding(false);
 
         //连接成功之后，需要去发现服务
@@ -290,8 +289,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
             getmBluetoothGatt().discoverServices();
         }else {
             Log.e(TAG, "error! it's connected,but BluetoothGatt is null, need to init ble again");
-            //SinovoBle.getInstance().disconnBle();
-
             disConectBle();
         }
     }
@@ -301,7 +298,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
      */
     void afterDisconnected(String disconn_mac){
         Log.e(TAG, "It's disconneced, lock's mac:"+ disconn_mac);
-//        SinovoBle.getInstance().getmConnCallBack().onConnectTest("ble disconnected:"+ disconn_mac);
 
         SinovoBle.getInstance().setLinked(false);
         SinovoBle.getInstance().setConnected(false);
@@ -313,12 +309,18 @@ public class BleConnCallBack extends BluetoothGattCallback {
             Log.e(TAG, "Bluetooth is off, ignore");
             return;
         }
+
         releaseBle();   //20201023
+
+        if (SinovoBle.getInstance().isDfuMode()) {
+            Log.e(TAG, "ota升级下，连接丢失不处理");
+            SinovoBle.getInstance().getmConnCallBack().onBleDisconnect(disconn_mac);
+            return;
+        }
 
         if (SinovoBle.getInstance().isBindMode()){
             if (SinovoBle.getInstance().getScanLockList().size() >0) {
                 Log.w(TAG, "绑定模式下。连接丢失后延迟300ms再去重连。mac:"+ SinovoBle.getInstance().getScanLockList().get(0).GetDevice().getAddress());
-
                 //延迟 300ms 再去连接
                 Handler delayToConnect    = new Handler(Looper.getMainLooper());
                 delayToConnect.postDelayed(() -> SinovoBle.getInstance().connectBle(SinovoBle.getInstance().getScanLockList().get(0).GetDevice()), 300);
@@ -351,23 +353,40 @@ public class BleConnCallBack extends BluetoothGattCallback {
             Log.e(TAG, "当前不是正在连接的状态，不能发现去服务");
             return;
         }
-
         List<BluetoothGattService> supportedGattServices = gatt.getServices();
-        String sUUID = BleConstant.SERVICE_UUID_FM60;
-        String characteristUUID = BleConstant.CHARACTERISTIC_UUID_FM60;
-        for (int i = 0; i < supportedGattServices.size(); i++) {
-            String serUUID = String.valueOf(supportedGattServices.get(i).getUuid());
-
-            if (serUUID.equals(BleConstant.SERVICE_UUID_FM67)) {
-                sUUID = BleConstant.SERVICE_UUID_FM67;
-                characteristUUID = BleConstant.CHARACTERISTIC_UUID_FM67;
-                Log.d(TAG, "根据过滤出来的服务UUID，检测到当前连接的是FM67");
-                break;
+        if (SinovoBle.getInstance().isDfuMode()){
+            Log.d(TAG, "升级模式下，获取uuid");
+            for (int i = 0; i < supportedGattServices.size(); i++) {
+                String serUUID = String.valueOf(supportedGattServices.get(i).getUuid());
+                Log.d(TAG, "升级模式下的suuid：" + serUUID);
+                List<BluetoothGattCharacteristic> characteristicList = supportedGattServices.get(i).getCharacteristics();
+                for(int j=0; j<characteristicList.size();j++){
+                    String cUUID = String.valueOf(characteristicList.get(j).getUuid());
+                    Log.d(TAG, "升级模式下的cuuid：" + cUUID);
+                }
             }
+//            SinovoBle.getInstance().setBleServiceUUID(BleConstant.SERVICE_UUID_DFU);
+//            SinovoBle.getInstance().setBlecharacteristUUID(BleConstant.CHARACTERISTIC_DFU1);
+            return;     //dfu 模式下，只需要连接上即可，无需设置相关的参数
+        }else {
+            String sUUID = BleConstant.SERVICE_UUID_FM60;
+            String characteristUUID = BleConstant.CHARACTERISTIC_UUID_FM60;
+            for (int i = 0; i < supportedGattServices.size(); i++) {
+                String serUUID = String.valueOf(supportedGattServices.get(i).getUuid());
+
+                if (serUUID.equals(BleConstant.SERVICE_UUID_FM67)) {
+                    sUUID = BleConstant.SERVICE_UUID_FM67;
+                    characteristUUID = BleConstant.CHARACTERISTIC_UUID_FM67;
+                    Log.d(TAG, "根据过滤出来的服务UUID，检测到当前连接的是FM67");
+                    break;
+                }
+            }
+
+            SinovoBle.getInstance().setBleServiceUUID(sUUID);
+            SinovoBle.getInstance().setBlecharacteristUUID(characteristUUID);
         }
 
-        SinovoBle.getInstance().setBleServiceUUID(sUUID);
-        SinovoBle.getInstance().setBlecharacteristUUID(characteristUUID);
+
 
         //延迟500ms 再去设置 读写 描述符
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -395,8 +414,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
                 disConectBle();
                 return;
             }
-
-//            SinovoBle.getInstance().getmConnCallBack().onConnectTest("Discovered Services success");
 
             //设置特征能够进行通知,设置写 描述符
             mBluetoothGatt.setCharacteristicNotification(mBleGattCharacteristic, true);
@@ -448,7 +465,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
                     SinovoBle.getInstance().setScanAgain(false);    //停止扫描
                     SinovoBle.getInstance().getBondBleMacList().clear();
                     SinovoBle.getInstance().getScanLockList().clear();
-                    SinovoBle.getInstance().getmConnCallBack().onConnectLockViaQRCode(JSON.toJSONString(jsonObject));
                 }else {
                   //  绑定的时候，如果不是绑定成功的，则添加到已经绑定过的列表中
                     SinovoBle.getInstance().getBondBleMacList().add(SinovoBle.getInstance().getLockMAC());
@@ -456,6 +472,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                     //再次开启扫描 发现新设备来连接
                     SinovoBle.getInstance().bleScan(SinovoBle.getInstance().getmBleScanCallBack());
                 }
+                SinovoBle.getInstance().getmConnCallBack().onConnectLockViaQRCode(JSON.toJSONString(jsonObject));
             }
         }
 
@@ -527,11 +544,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
             SinovoBle.getInstance().getmConnCallBack().onDynamicCodeStatus(JSON.toJSONString(jsonObject));
         }
 
-        //授权新用户
-        if (Objects.equals(funCode, "26")){
-            SinovoBle.getInstance().getmConnCallBack().onAuthorOther(JSON.toJSONString(jsonObject));
-        }
-
         //锁冻结的推送
         if (Objects.equals(funCode, "2b")){
             SinovoBle.getInstance().getmConnCallBack().onLockFrozen(JSON.toJSONString(jsonObject));
@@ -561,7 +573,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
 
                 //延迟1.5秒后再检测 是否已经收到锁端的恢复
                 sendDataHandler.postDelayed(() -> BleData.getInstance().checkDataReceive(), 2000);
-                Log.d(TAG, "指令:"+ BleData.getInstance().getCommandList().getFirst()+" 发送出去了，2秒后检测是否收到回复");
+                Log.d(TAG, "指令:"+ BleData.getInstance().getCommandList().getFirst()+" 发送出去了");
             }else {
                 exeCmdMaxCount ++;
                 Log.e(TAG, "Cmd:"+ BleData.getInstance().getCommandList().getFirst()+" send failed， exeCmdMaxCount："+exeCmdMaxCount);

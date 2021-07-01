@@ -1,5 +1,9 @@
 package com.sinovotec.httplib;
 
+import android.graphics.Bitmap;
+
+import com.alibaba.fastjson.JSONObject;
+
 public interface HttpLibCallback {
 
     //用户注册的回调
@@ -65,52 +69,19 @@ public interface HttpLibCallback {
     //管理员从服务器端彻底删除锁
     void onRemoveLock(String result);
 
-    //http get 请求
-    void onHttpGet(String result);
+    //http get 请求,  获取头像
+    void onGetUserAvatar(byte[] imageData);
+
+    void onGetDFUInfo(String result);
+
+    void onGetLockType(String result);
+
+    void onGetLockImage(byte[] imageData, String imageType);
 
     //http download file 下载文件
     void onDownLoadFile(String result);
 
-    //在服务器端添加锁的用户数据
-//    void onAddLockUser(String result);
-
-    //在服务器端删除锁的用户数据
-//    void onDelLockUser(String result);
-
-    //在服务器端更新锁的用户数据
-//    void onUpdateLockUser(String result);
-
-    //从服务器端获取锁的所有用户数据
-//    void onGetLockUserList(String result);
-
-    //从服务器端清空所有的用户
-//    void onCleanLockUser(String result);
-
-    //添加密码
-//    void onAddLockCode(String result);
-
-    //删除密码
-//    void onDelLockCode(String result);
-
-    //更新密码
-//    void onUpdateLockCode(String result);
-
-    //添加卡
-//    void onAddLockCard(String result);
-
-    //删除卡
-//    void onDelLockCard(String result);
-
-    //添加指纹
-//    void onAddLockFinger(String result);
-
-    //删除指纹
-//    void onDelLockFinger(String result);
-
-    //添加防胁迫指纹
-//    void onAddLockWarmFinger(String result);
-
-    //删除防胁迫指纹
-//    void onDelLockWarmFinger(String result);
+    //恢复出厂设置后，调用此接口，服务器会 通过mqtt 推送通知其他用户
+    void onResetLock(String result);
 
 }

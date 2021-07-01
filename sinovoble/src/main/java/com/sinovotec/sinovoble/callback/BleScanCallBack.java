@@ -54,6 +54,12 @@ public class BleScanCallBack extends ScanCallback {
                     public void onScanResult(int callbackType, ScanResult result) {
                         BleScanDevice bleScanDevice = analyzeScanResult(result);
 
+                        if (SinovoBle.getInstance().isDfuMode()){
+                            Log.w(TAG,"dfu升级模式下，扫描得到的锁mac："+ bleScanDevice.GetDevice().getAddress());
+                            SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
+                            return;
+                        }
+
                         if (!SinovoBle.getInstance().isScanOnly()){
                             for (int i = 0; i< SinovoBle.getInstance().getScanLockList().size(); i++){
                                 if (SinovoBle.getInstance().getScanLockList().get(i).GetDevice().getAddress().equals(bleScanDevice.GetDevice().getAddress())){
@@ -131,7 +137,10 @@ public class BleScanCallBack extends ScanCallback {
         map.put("lockType", scanLockType);
         map.put("Rssi", mRssi);
         map.put("qrcode", qrcode);
-        iScanCallBack.onDeviceFound(JSONObject.toJSONString(map));
+
+        if (!SinovoBle.getInstance().isDfuMode()) {
+            iScanCallBack.onDeviceFound(JSONObject.toJSONString(map));
+        }
         Log.d(TAG, "Scan result：{ Mac address:" +scanLockMac + " Lock name："+scanLockType + " Rssi:"+mRssi + " Adv_data:"+byte2hex(manufacturerData)+"}");
 
         //将扫描到的设备 放入到 list中
@@ -140,7 +149,7 @@ public class BleScanCallBack extends ScanCallback {
         //判断扫描到的锁 是不是已经存在扫描列表中，如果已经存在，则更新其信息
         for (int i = 0; i < SinovoBle.getInstance().getScanLockList().size(); i++) {
             BleScanDevice bleScanDevice = SinovoBle.getInstance().getScanLockList().get(i);
-            Log.d(TAG, "XXSD getScanLockList() 中锁的地址："+ bleScanDevice.GetDevice().getAddress());
+            Log.d(TAG, "getScanLockList() 中锁的地址："+ bleScanDevice.GetDevice().getAddress());
             if (bleScanDevice.GetDevice().getAddress().compareTo(scanLockMac)== 0){
                 String nowtime = getNowTime();
                 bleScanDevice.ReflashInf(scanLock, mRssi, manufacturerData, nowtime);

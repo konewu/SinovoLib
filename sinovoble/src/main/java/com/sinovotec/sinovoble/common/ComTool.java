@@ -6,7 +6,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Environment;
 import android.util.Log;
 
 import com.alibaba.fastjson.JSONObject;
@@ -19,7 +18,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
@@ -32,27 +30,27 @@ import java.util.Random;
 public class ComTool {
 
     //计算 文件的 md5值
-    public static String getFileMD5(File file) {
-        if (!file.isFile()) {
-            return null;
-        }
-        MessageDigest digest ;
-        FileInputStream in ;
-        byte[] buffer = new byte[1024];
-        int len;
-        try {
-            digest = MessageDigest.getInstance("MD5");
-            in = new FileInputStream(file);
-            while ((len = in.read(buffer, 0, 1024)) != -1) {
-                digest.update(buffer, 0, len);
-            }
-            in.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-        return byte2hex(digest.digest());
-    }
+//    public static String getFileMD5(File file) {
+//        if (!file.isFile()) {
+//            return null;
+//        }
+//        MessageDigest digest ;
+//        FileInputStream in ;
+//        byte[] buffer = new byte[1024];
+//        int len;
+//        try {
+//            digest = MessageDigest.getInstance("MD5");
+//            in = new FileInputStream(file);
+//            while ((len = in.read(buffer, 0, 1024)) != -1) {
+//                digest.update(buffer, 0, len);
+//            }
+//            in.close();
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+//        return byte2hex(digest.digest());
+//    }
 
 //    public static String bytesToHexString(byte[] src) {
 //        StringBuilder stringBuilder = new StringBuilder();

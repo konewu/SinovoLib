@@ -9,12 +9,16 @@ import com.alibaba.fastjson.JSONObject;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.MessageDigest;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -34,15 +38,7 @@ public class HttpLib {
 
     private static HttpLib instance;
     private String accessToken;             //APP获取这个参数暂时保存在手机里，作为其他接口的调用凭证
-//    private String reflashToken;            //APP获取这个参数暂时保存在手机里，作为其他接口的调用凭证
-//    private String productKey;              //app接收mqtt推送用
-//    private String deviceName;              //app接收mqtt推送用
-//    private String deviceSecret;            //app接收mqtt推送用
-//    private String appRegion;               //app接收mqtt推送用
-//    private String subscribeTopic;          //app接收mqtt推送用
-//    private String publishtopic;            //app接收mqtt推送用
 
-//    private String gatewayID_add;           //当前锁添加的网关id
     private final HttpLibCallback httpLibCallback;  //http发送数据的回调
 
     private int exeCmdNo = -1;
@@ -136,7 +132,7 @@ public class HttpLib {
      *get的方式请求
      *@return 返回null 登录异常
      */
-    private String httpDownDfuFile(String path, String locktype, String fmversion, String savePath) throws Exception {
+    private String httpDownDfuFile(String path, String locktype, String fmversion, String savePath, String dfuMD5) throws Exception {
         try {
             URL url = new URL(path);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -150,11 +146,23 @@ public class HttpLib {
             dataOutputStream.write(data);
             dataOutputStream.flush();
 
+            //对比下载文件的md5值 是否一致
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("srcFile",path);
             jsonObject.put("localFile",savePath);
             jsonObject.put("lockType",locktype);
             jsonObject.put("fmversion",fmversion);
+            jsonObject.put("dfuMd5",dfuMD5);
+            String checkOK = "00";      //默认下载文件的md5是不正确的，需要校验
+
+            if (fileIsExists(savePath)) {
+                File dfuFileLocal = new File(savePath);
+                String md5Local = getFileMD5(dfuFileLocal);
+                if (dfuMD5.equals(md5Local)){
+                    checkOK = "01";
+                }
+            }
+            jsonObject.put("checkOK",checkOK);
             return jsonObject.toJSONString();
         } catch (IOException e) {
             e.printStackTrace();
@@ -165,14 +173,52 @@ public class HttpLib {
     /**
      * http get  with thread
      */
-    private void httpGetWithThread(String url){
+    private void httpGetWithThread(String url, int getFlag){
         new Thread(() -> {
             Log.i(TAG, "http get,url:"+url);
             String result = httpGet(url);
             if (result.contains("!DOCTYPE html") || result.isEmpty()){
-                callback(21,connfailed("SYSTEM ERROR"));
+                callback(getFlag,connfailed("SYSTEM ERROR"));
             }else {
-                callback(21,result);
+                callback(getFlag,result);
+            }
+        }).start();
+    }
+
+    private void httpGetImage(final String url, final String dataType){
+        new Thread(() -> {
+            URL imageurl = null;
+            try {
+                imageurl = new URL(url);
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            }
+            try {
+                HttpURLConnection conn = (HttpURLConnection) Objects.requireNonNull(imageurl).openConnection();
+                conn.setDoInput(true);
+                conn.connect();
+
+                InputStream is = conn.getInputStream();
+
+                ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
+                byte[] buff = new byte[4096]; //buff用于存放循环读取的临时数据
+                int rc ;
+                while ((rc = is.read(buff, 0, 100)) > 0) {
+                    swapStream.write(buff, 0, rc);
+                }
+                byte[] in_b = swapStream.toByteArray(); //in_b为转换之后的结果
+
+//                bitmap[0] = BitmapFactory.decodeStream(is);
+             //   httpLibCallback.onGetLockImage(bitmap[0], dataType);
+                if (dataType.length() >0) {
+                    httpLibCallback.onGetLockImage(in_b, dataType);
+                }else {
+                    httpLibCallback.onGetUserAvatar(in_b);
+                }
+                is.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+                httpLibCallback.onGetLockImage(null,"error");
             }
         }).start();
     }
@@ -180,12 +226,12 @@ public class HttpLib {
     /**
      * http get  with thread
      */
-    private void httpDownloadWithThread(String url, String lockType, String fmversion ,String savaPath){
+    private void httpDownloadWithThread(String url, String lockType, String fmversion ,String savaPath, String dfuMD5){
         new Thread(() -> {
             Log.i(TAG, "http download ,url:"+url);
             String result = null;
             try {
-                result = httpDownDfuFile(url, lockType, fmversion, savaPath);
+                result = httpDownDfuFile(url, lockType, fmversion, savaPath, dfuMD5);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -200,15 +246,18 @@ public class HttpLib {
     /**
      * http  get 请求，当前型号锁的 升级包
      */
-    public void downfile(String filePath, String lockType, String fmversion ,String savePath){
-        String path = serverIP+"/dfu/"+filePath;
-        httpDownloadWithThread(path, lockType, fmversion, savePath);
+    public void downloadDFUfile(String filePath, String lockType, String fmversion ,String savePath, String dfuMD5, boolean isRelease){
+        String path = serverIP+"/dfu_release/"+filePath;
+        if (!isRelease){
+            path = serverIP+"/dfu_debug/"+filePath;
+        }
+        httpDownloadWithThread(path, lockType, fmversion, savePath, dfuMD5);
     }
 
     /**
      * to Send Data With Thread
      */
-    private void toSendDataWithThread(String cmdStr){
+    private void toSendDataWithThread(String cmdStr) {
         Map<String, Object> mapTypes = JSON.parseObject(cmdStr);
 
         final String url        = Objects.requireNonNull(mapTypes.get("url")).toString();
@@ -219,7 +268,7 @@ public class HttpLib {
         new Thread(() -> {
             try {
                 String result = "";
-                Log.i(TAG, "http post,url:"+url + ", postData:" + postData);
+                Log.i(TAG, "http post,url:"+url );
                 if (token.equals("01")){
                     if (getAccessToken() !=null) {
                         result = postWithHeader(url, postData, getAccessToken());
@@ -247,12 +296,12 @@ public class HttpLib {
                 httpLibCallback.onUserRegister(resultStr);
                 break;
             case 1:
-                httpLibCallback.onUserLogin(resultStr);
                 JSONObject mapTypes = JSONObject.parseObject(resultStr);
-
                 if (mapTypes.containsKey("access_token")){
-                    this.accessToken = Objects.requireNonNull(mapTypes.get("access_token")).toString();
+                    accessToken = Objects.requireNonNull(mapTypes.get("access_token")).toString();
+                    Log.d(TAG, "登录成功之后，需要跟更新 access_token："+ accessToken );
                 }
+                httpLibCallback.onUserLogin(resultStr);
                 break;
             case 2:
                 httpLibCallback.onGetVerifyCode(resultStr);
@@ -310,11 +359,17 @@ public class HttpLib {
             case 20:
                 httpLibCallback.onRemoveLock(resultStr);
                 break;
-            case 21:    //http get的返回
-                httpLibCallback.onHttpGet(resultStr);
+            case 21:
+                httpLibCallback.onGetDFUInfo(resultStr);
                 break;
             case 22:    //download file的返回
                 httpLibCallback.onDownLoadFile(resultStr);
+                break;
+            case 23:    //恢复出厂设置， 服务器会自动推送给  相应的用户手上
+                httpLibCallback.onResetLock(resultStr);
+                break;
+            case 24:    //查询锁的型号
+                httpLibCallback.onGetLockType(resultStr);
                 break;
         }
     }
@@ -341,7 +396,6 @@ public class HttpLib {
         String cmdString = new JSONObject(cmdMap).toString();
         toSendDataWithThread(cmdString);
     }
-
 
     /**
      * login
@@ -535,6 +589,7 @@ public class HttpLib {
      * Get the list of lock for the user
      */
     public void getLockList(){
+        Log.d(TAG, "GWLIST 打印出 access_token：" + accessToken);
         String urlPath = "/api/User/getDeviceList";
         final String url = serverIP + urlPath;
 
@@ -547,7 +602,6 @@ public class HttpLib {
         String cmdString = new JSONObject(cmdMap).toString();
         toSendDataWithThread(cmdString);
     }
-
 
     /**
      * delete lock from http server
@@ -563,6 +617,23 @@ public class HttpLib {
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("device_id", lockID);
         cmdMap.put("data",new JSONObject(map));
+
+        String cmdString = new JSONObject(cmdMap).toString();
+        toSendDataWithThread(cmdString);
+    }
+
+    /**
+     * update information of the lock
+     */
+    public void resetLock(final JSONObject json){
+        String urlPath = "/api/User/resetDevice";
+        final String url = serverIP + urlPath;
+
+        LinkedHashMap<String, Object> cmdMap = new LinkedHashMap<>();
+        cmdMap.put("url",url);
+        cmdMap.put("token","01");
+        cmdMap.put("funcode","23");
+        cmdMap.put("data",json);
 
         String cmdString = new JSONObject(cmdMap).toString();
         toSendDataWithThread(cmdString);
@@ -700,33 +771,38 @@ public class HttpLib {
         toSendDataWithThread(cmdString);
     }
 
-
     /**
-     * 彻底从服务器上删除锁，管理员权限才能操作
+     * http  get 请求，查询升级包信息
      */
-    public void removelock(String lockID){
-        String urlPath = "/api/User/removeDevice";
-        final String url = serverIP + urlPath;
-        LinkedHashMap<String, Object> cmdMap = new LinkedHashMap<>();
-        cmdMap.put("url",url);
-        cmdMap.put("token","01");
-        cmdMap.put("funcode","20");
-
-        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-        map.put("device_id", lockID);
-
-        cmdMap.put("data",new JSONObject(map));
-        String cmdString = new JSONObject(cmdMap).toString();
-        toSendDataWithThread(cmdString);
+    public void getDFUInfo(boolean isRelease){
+        String path = serverIP+"/dfu_release/dfu.json";
+        if (!isRelease){
+            path = serverIP+"/dfu_debug/dfu.json";
+        }
+        httpGetWithThread(path, 21);
     }
 
+    /**
+     * http  get 请求，查询锁的类型型号
+     */
+    public void getLockType(){
+        String path = serverIP+"/locktype/locktype.json";
+        httpGetWithThread(path, 24);
+    }
 
     /**
-     * http  get 请求，当前型号锁的 升级包
+     * http  get 请求，查询指定锁的 图片
      */
-    public void getDfuInfo(){
-        String path = serverIP+"/dfu/dfu.json";
-       httpGetWithThread(path);
+    public void getUserAvatar(String url){
+        httpGetImage(url, "");
+    }
+
+    /**
+     * http  get 请求，查询指定锁的 图片
+     */
+    public void getLockImage(String url, String lockType){
+        String path = serverIP+"/locktype/"+url;
+        httpGetImage(path, lockType);
     }
 
     /*
@@ -786,8 +862,6 @@ public class HttpLib {
         return sb.toString();
     }
 
-
-
     /**
      * 从输入流中获取数据
      * @param inStream 输入流
@@ -803,6 +877,64 @@ public class HttpLib {
         }
         inStream.close();
         return outStream.toByteArray();
+    }
+
+    //检查文件是否存在
+    public boolean fileIsExists(String strFile) {
+        try
+        {
+            File f=new File(strFile);
+            if(!f.exists())
+            {
+                return false;
+            }
+
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    //计算 文件的 md5值
+    public static String getFileMD5(File file) {
+        if (!file.isFile()) {
+            return null;
+        }
+        MessageDigest digest ;
+        FileInputStream in ;
+        byte[] buffer = new byte[1024];
+        int len;
+        try {
+            digest = MessageDigest.getInstance("MD5");
+            in = new FileInputStream(file);
+            while ((len = in.read(buffer, 0, 1024)) != -1) {
+                digest.update(buffer, 0, len);
+            }
+            in.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return bytesToHexString(digest.digest());
+    }
+
+    public static String bytesToHexString(byte[] src) {
+        StringBuilder stringBuilder = new StringBuilder();
+        if (src == null || src.length <= 0) {
+            return null;
+        }
+        for (byte b : src) {
+            int v = b & 0xFF;
+            String hv = Integer.toHexString(v);
+            if (hv.length() < 2) {
+                stringBuilder.append(0);
+            }
+            stringBuilder.append(hv);
+        }
+        return stringBuilder.toString();
     }
 
 }

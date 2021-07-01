@@ -47,7 +47,9 @@ public class GWSmartConfig {
 
     //退出配网
     public void exitConfig() {
-        andEsptouch.stopConfig();
-        andEsptouch.cancelAsyncTask();
+        if(andEsptouch != null) {
+            andEsptouch.stopConfig();
+            andEsptouch.cancelAsyncTask();
+        }
     }
 }

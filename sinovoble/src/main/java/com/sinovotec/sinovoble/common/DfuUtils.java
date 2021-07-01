@@ -45,7 +45,8 @@ public class DfuUtils {
         starter = new DfuServiceInitiator(deviceMac)
                 .setDeviceName(deviceName)       //设备名称
                 .setKeepBond(false)             //保持设备绑定 官方demo为false
-                .setForceDfu(false)
+                .setForceDfu(true)
+                .setNumberOfRetries(10)
                 .setPacketsReceiptNotificationsEnabled(false)
                 .setPacketsReceiptNotificationsValue(12)
                 .setUnsafeExperimentalButtonlessServiceInSecureDfuEnabled(true);    //官方ndemo为true

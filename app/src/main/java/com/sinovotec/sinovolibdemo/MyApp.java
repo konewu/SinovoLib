@@ -39,6 +39,8 @@ public class MyApp extends Application {
     private TextView showMaclockpower;
     private QMUIRoundButton MaclockBtn;
 
+    private String lockSno = "";
+
     public static MyApp getInstance() {
         if (myApp == null) {
             synchronized (MyApp.class) {      //同步锁,一个线程访问一个对象中的synchronized(this)同步代码块时，其他试图访问该对象的线程将被阻塞
@@ -248,4 +250,11 @@ public class MyApp extends Application {
         this.showMacResult = showMacResult;
     }
 
+    public String getLockSno() {
+        return lockSno;
+    }
+
+    public void setLockSno(String lockSno) {
+        this.lockSno = lockSno;
+    }
 }

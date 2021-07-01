@@ -39,18 +39,18 @@ import java.util.Objects;
 import androidx.annotation.NonNull;
 import no.nordicsemi.android.dfu.DfuProgressListener;
 
-public class SinovoBle  {
+public class SinovoBle {
     private final String TAG = "SinovoBle";
     private String lockQRCode ;                   //锁的二维码，用户输入的，用于添加锁的
     private String userIMEI;                      //手机的imei，作为手机id
     private String phoneIMEI;                     //手机的imei，作为手机id
     private String lockMAC;                       //当前连接锁的蓝牙mac地址
-    private String lockSNO;                       //手机与锁进行蓝牙通信使用的 校验码
+    private String lockSNO = "";                       //手机与锁进行蓝牙通信使用的 校验码
     private String lockName;                      //锁的名称
-    private String lockFirmVersion;
-    private String lockType;
     private String lockGWid = "";                 //锁对应的网关id
     private String appFilePath = "";              // APP保存升级包的目录
+
+    private String dfu_mac = "";                  //dfu 升级时 设备的mac地址
 
     private String bleServiceUUID;                //蓝牙服务的UUID
     private String blecharacteristUUID;           //蓝牙特征字的UUID
@@ -60,10 +60,11 @@ public class SinovoBle  {
     private boolean isConnected = false;          //是否已经连接成功, 已经可以发送命令了
     private boolean isLinked    = false;          //是否连接上了，第一步连接上与否， 下面还需要 发现服务，设置 读写属性才能发送命令
     private boolean isScanOnly  = false;          //仅仅进行蓝牙扫描，不连接
+    private boolean isDfuMode   = false;          //是否为 dfu 升级模式
 
-    private boolean isConnectting = false;        //是否正在连接
-    private String connectTime = "";              //记录下连接的时间
-    private String connectingMac = "";            //当前正在连接的设备mac地址
+    private boolean isConnectting   = false;      //是否正在连接
+    private String connectTime      = "";         //记录下连接的时间
+    private String connectingMac    = "";         //当前正在连接的设备mac地址
     private int connType = 0;                     //指定连接方式，为0 表示用蓝牙连接，为1表示通过网关连接
 
     private Context context;                       //上下文
@@ -83,8 +84,9 @@ public class SinovoBle  {
     private IScanCallBack mBleScanCallBack;     //蓝牙扫描的回调
     private IConnectCallback mConnCallBack;     //蓝牙连接的回调
 
-    private  LoadLibJni myJniLib;
+    private BleConnectLock bleConnectLock_dfu;   //dfu之前先记录下 原来的设备
 
+    private  LoadLibJni myJniLib;
 
     /**
      * Instantiate  SinovoBle class
@@ -153,14 +155,6 @@ public class SinovoBle  {
 
     public String getLockName() {
         return lockName;
-    }
-
-    public String getLockType() {
-        return lockType;
-    }
-
-    public void setLockFirmVersion(String lockFirmVersion) {
-        this.lockFirmVersion = lockFirmVersion;
     }
 
     public ArrayList<String> getBondBleMacList() {
@@ -235,24 +229,80 @@ public class SinovoBle  {
         this.blecharacteristUUID = blecharacteristUUID;
     }
 
-    public void setmBleScanCallBack(IScanCallBack mBleScanCallBack) {
-        this.mBleScanCallBack = mBleScanCallBack;
-    }
-
-    public void setmConnCallBack(IConnectCallback mConnCallBack) {
-        this.mConnCallBack = mConnCallBack;
-    }
-
     public void setToConnectLockList(ArrayList<BleConnectLock> toConnectLockList) {
         this.toConnectLockList = toConnectLockList;
     }
 
-    public void setLockType(String lockType) {
-        this.lockType = lockType;
+    public String getLockGWid() {
+        return lockGWid;
     }
 
-    public String getLockFirmVersion() {
-        return lockFirmVersion;
+    public void setLockGWid(String lockGWid) {
+        this.lockGWid = lockGWid;
+    }
+
+    public boolean isLinked() {
+        return isLinked;
+    }
+
+    public void setLinked(boolean linked) {
+        isLinked = linked;
+    }
+
+    public void setConnectting(boolean connectting) {
+        isConnectting = connectting;
+    }
+
+    public boolean isConnectting() {
+        return isConnectting;
+    }
+
+    public void setConnectTime(String connectTime) {
+        this.connectTime = connectTime;
+    }
+
+    public String getConnectTime() {
+        return connectTime;
+    }
+
+    public String getConnectingMac() {
+        return connectingMac;
+    }
+
+    public void setConnectingMac(String connectingMac) {
+        this.connectingMac = connectingMac;
+    }
+
+    public boolean isScanOnly() {
+        return isScanOnly;
+    }
+
+    public void setScanOnly(boolean scanOnly) {
+        isScanOnly = scanOnly;
+    }
+
+    public boolean isDfuMode() {
+        return isDfuMode;
+    }
+
+    public void setDfuMode(boolean dfuMode) {
+        isDfuMode = dfuMode;
+    }
+
+    public String getDfu_mac() {
+        return dfu_mac;
+    }
+
+    public void setDfu_mac(String dfu_mac) {
+        this.dfu_mac = dfu_mac;
+    }
+
+    public BleConnectLock getBleConnectLock_dfu() {
+        return bleConnectLock_dfu;
+    }
+
+    public void setBleConnectLock_dfu(BleConnectLock bleConnectLock_dfu) {
+        this.bleConnectLock_dfu = bleConnectLock_dfu;
     }
 
     public LoadLibJni getMyJniLib() {
@@ -322,25 +372,61 @@ public class SinovoBle  {
 
         @Override
         public void onDeviceDisconnected(@NonNull String s) {
-            mConnCallBack.onDFUDeviceDisconnected(s);
+            if (isDfuMode()) {
+                SinovoBle.getInstance().setLinked(false);
+                SinovoBle.getInstance().setConnected(false);
+                SinovoBle.getInstance().setConnectting(false);
+                BleData.getInstance().setExeCmding(false);
+                setDfuMode(false);
+                mConnCallBack.onDFUDeviceDisconnected(s);
+            }
         }
 
         @Override
         public void onDfuCompleted(@NonNull String s) {
+            SinovoBle.getInstance().setLinked(false);
+            SinovoBle.getInstance().setConnected(false);
+            SinovoBle.getInstance().setConnectting(false);
+            BleData.getInstance().setExeCmding(false);
+            setDfuMode(false);
+
+            getToConnectLockList().clear();
+            if (getBleConnectLock_dfu()!=null){
+                getToConnectLockList().add(getBleConnectLock_dfu());
+            }
             mConnCallBack.onDfuCompleted(s);
         }
 
         @Override
         public void onDfuAborted(@NonNull String s) {
+            SinovoBle.getInstance().setLinked(false);
+            SinovoBle.getInstance().setConnected(false);
+            SinovoBle.getInstance().setConnectting(false);
+            BleData.getInstance().setExeCmding(false);
+            setDfuMode(false);
+
+            getToConnectLockList().clear();
+            if (getBleConnectLock_dfu()!=null){
+                getToConnectLockList().add(getBleConnectLock_dfu());
+            }
             mConnCallBack.onDfuAborted(s);
         }
 
         @Override
         public void onError(@NonNull String s, int i, int i1, String s1) {
+            SinovoBle.getInstance().setLinked(false);
+            SinovoBle.getInstance().setConnected(false);
+            SinovoBle.getInstance().setConnectting(false);
+            BleData.getInstance().setExeCmding(false);
+            setDfuMode(false);
+
+            getToConnectLockList().clear();
+            if (getBleConnectLock_dfu()!=null){
+                getToConnectLockList().add(getBleConnectLock_dfu());
+            }
             mConnCallBack.onDFUError(s, i, i1, s1);
         }
     };
-
 
     /**
      * Initialize Ble
@@ -367,7 +453,6 @@ public class SinovoBle  {
 
         //先注册进度以及升级状态回调
         DfuUtils.getInstance().setmDfuProgressListener(context,progressListener);//升级状态回调
-
         return (bluetoothAdapter !=null && mBleScanCallBack !=null && mConnCallBack !=null);
     }
 
@@ -399,7 +484,6 @@ public class SinovoBle  {
         }
         Log.d(TAG, "调用startBleScan  来扫描");
         getBondBleMacList().clear();                //clean the bondBleMacList before starting scan
-        setScanAgain(true);
 
         //绑定模式下，设置绑定超时检测
         if (isBindMode() && !isScanOnly()) {
@@ -441,11 +525,11 @@ public class SinovoBle  {
             SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
         }
         setScanOnly(true);
-        setScanAgain(true);
         setBindMode(true);
         setUserIMEI("");
-        toConnectLockList.clear();
         disconnBle();
+
+        setScanAgain(true);
         startBleScan();
     }
 
@@ -455,13 +539,16 @@ public class SinovoBle  {
      * @param userIMEI   lock will bind to the user
      */
     public void connectLockViaQRCode(String qrcode, String userIMEI){
+
+        Log.d(TAG, "准备绑定锁的 qrcode："+ qrcode + ", IMEI:"+ userIMEI);
         if (SinovoBle.getInstance().getBindTimeoutHandler() != null) {
             SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
         }
         setScanOnly(false);
-        setScanAgain(true);
         setBindMode(true);
         setLockQRCode(qrcode);
+        SinovoBle.getInstance().getScanLockList().clear();  //先清空绑定列表
+
         if (!userIMEI.isEmpty()) {
             setUserIMEI(userIMEI);
         }else {
@@ -469,8 +556,8 @@ public class SinovoBle  {
             setUserIMEI(phoneIMEI);
         }
 
-        toConnectLockList.clear();
         disconnBle();
+        setScanAgain(true);
         startBleScan();
     }
 
@@ -483,23 +570,22 @@ public class SinovoBle  {
             SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
         }
         setScanOnly(false);
-        setScanAgain(true);
         setBindMode(true);
         setLockQRCode(qrcode);
+        SinovoBle.getInstance().getScanLockList().clear();  //先清空绑定列表
+
         phoneIMEI = ComTool.createDir(appFilePath);
         setUserIMEI(phoneIMEI);
-
-        toConnectLockList.clear();
         disconnBle();
+        setScanAgain(true);
         startBleScan();
     }
 
     /**
      * 非绑定模式下，自动连接指定的锁，可以指定多把，蓝牙先扫描到哪一把就连哪一把
      * @param autoConnectList  需要自动连接的锁列表
-     * @connectViaScan 为 true的时候，表示需要先扫描，扫描到 列表中的锁再连接，为false 则表示直接连接，不需要经过扫描
      */
-    public void connectLockViaMacSno(final ArrayList<BleConnectLock> autoConnectList, Boolean connectViaScan){
+    public void connectLockViaMacSno(final ArrayList<BleConnectLock> autoConnectList){
         if (mBleScanCallBack == null || mConnCallBack ==null){
             Log.e(TAG,"ScanCallBack or mConnCallBack is null");
             //出错了，需要提示客户
@@ -508,43 +594,14 @@ public class SinovoBle  {
 
         //保存用户指定的 自动连接锁列表
         setToConnectLockList(autoConnectList);
-
         setScanOnly(false);
         setBindMode(false);
-        if (connectViaScan) {
-            Log.d(TAG,"根据设置，连接之前 同时开启扫描");
-            SinovoBle.getInstance().startBleScan();
-        }else {
-            //只连接队列中的第一把锁，连接的时候 先停止蓝牙扫描，这样连接效率高一些，同时连接速度也快一些
-            if (!autoConnectList.isEmpty()){
-                setScanAgain(false);
-                BleScanCallBack.getInstance(mBleScanCallBack).stopScan();
-                BleConnectLock bleConnectLock = autoConnectList.get(0);
-
-                //add 20210128
-                autoConnectList.clear();
-                autoConnectList.add(bleConnectLock);
-
-                Log.w(TAG, "autoConnectLock :connect to "+ bleConnectLock.getLockMac() + ",there are "+autoConnectList.size()+" locks in autoConnectLock's list");
-                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(bleConnectLock.getLockMac());
-
-                //延迟 300ms 再去连接
-                SinovoBle.getInstance().setScanAgain(false);
-                connectBle(device);
-
-                //目前测试来看，最长超时返回为 31s，绝对部分是 30s
-                autoConnetHandler.postDelayed(() -> BleConnCallBack.getInstance().disConectBle(), 33*1000);
-            }
-        }
+        setScanAgain(true);
+        startBleScan();
     }
 
     //检查是否有错
     private int checkEnvir(){
-        if (SinovoBle.getInstance().getLockSNO() == null){
-            Log.e(TAG,"SNO error");
-            return -1;
-        }
-
         if (SinovoBle.getInstance().getLockSNO().length() != 6){
             return -1;
         }
@@ -555,7 +612,7 @@ public class SinovoBle  {
      * 创建用户,默认创建的是普通用户
      * @param userName string
      */
-    public int addUser(String userName){
+    public int addUser(String userName, String lockSNO){
         if (userName.isEmpty() || userName.length()>10){
             return 2;
         }
@@ -565,7 +622,7 @@ public class SinovoBle  {
             return result;
         }
 
-        String data = SinovoBle.getInstance().getLockSNO() +ComTool.stringToAscii(userName);
+        String data = lockSNO +ComTool.stringToAscii(userName);
         BleData.getInstance().exeCommand("02", data, false);
         return 0;
     }
@@ -575,7 +632,7 @@ public class SinovoBle  {
      * @param userName 用户名
      * @param userNID   用户的nid
      */
-    public int updateUserName(String userName, String userNID){
+    public int updateUserName(String userName, String userNID, String lockSNO){
         if (userNID.isEmpty() || userName.length()>10 ){
             Log.e(TAG,"Parameter error");
             return 2;
@@ -590,7 +647,7 @@ public class SinovoBle  {
         if (!userName.isEmpty()){
             username = ComTool.stringToAscii(userName);
         }
-        String updateStr = SinovoBle.getInstance().getLockSNO() +userNID + username;
+        String updateStr = lockSNO +userNID + username;
         BleData.getInstance().exeCommand("03", updateStr, false);
         return 0;
     }
@@ -601,7 +658,7 @@ public class SinovoBle  {
      * @param dataType      数据类型， 02 普通密码，03超级用户密码，06是卡，07是指纹，08是防胁迫指纹
      * @param data          添加密码时具体的密码内容， 如果是添加卡/指纹时，留空即可
      */
-    public int addDataForUser(String userNID, String dataType, String data){
+    public int addDataForUser(String userNID, String dataType, String data, String lockSNO){
         if (userNID.isEmpty() || dataType.isEmpty()){
             Log.e(TAG,"Parameter error");
             return 2;
@@ -619,13 +676,13 @@ public class SinovoBle  {
                 return 2;
             }
 
-            String data_s = SinovoBle.getInstance().getLockSNO() +userNID + dataType + data;
+            String data_s = lockSNO +userNID + dataType + data;
             BleData.getInstance().exeCommand("05", data_s, false);
         }
 
         //添加卡、指纹、防胁迫指纹
         if (dataType.equals("06") || dataType.equals("07") || dataType.equals("08")){
-            String data_s = SinovoBle.getInstance().getLockSNO() +userNID + dataType ;
+            String data_s = lockSNO +userNID + dataType ;
             BleData.getInstance().exeCommand("05", data_s, true);
         }
         return 0;
@@ -636,7 +693,7 @@ public class SinovoBle  {
      * @param dataType s
      * @param delID s
      */
-    public int delData(String dataType, String delID){
+    public int delData(String dataType, String delID, String lockSNO){
         if (delID.isEmpty() || dataType.isEmpty()){
             Log.e(TAG,"Parameter error");
             return 2;
@@ -648,11 +705,11 @@ public class SinovoBle  {
         }
 
         if (!dataType.equals("0e")){
-            String data = SinovoBle.getInstance().getLockSNO() +dataType + delID ;
+            String data = lockSNO +dataType + delID ;
             BleData.getInstance().exeCommand("06", data, false);
         }else {
             //删除绑定
-            String data = SinovoBle.getInstance().getLockSNO() + delID ;
+            String data = lockSNO + delID ;
             BleData.getInstance().exeCommand("1b", data, false);
         }
         return 0;
@@ -665,7 +722,7 @@ public class SinovoBle  {
      * @param codeID   密码的ID
      * @param newCode  新的密码
      */
-    public int resetCode(String userNid, String codeType, String codeID, String newCode){
+    public int resetCode(String userNid, String codeType, String codeID, String newCode, String lockSNO){
         if (userNid.isEmpty() || codeType.isEmpty() || codeID.isEmpty() || newCode.isEmpty()){
             Log.e(TAG,"Parameter error");
             return 2;
@@ -676,7 +733,7 @@ public class SinovoBle  {
             return result;
         }
 
-        String data = SinovoBle.getInstance().getLockSNO() + userNid + codeType + codeID + newCode;
+        String data = lockSNO + userNid + codeType + codeID + newCode;
         BleData.getInstance().exeCommand("0d", data, false);
         return 0;
     }
@@ -698,7 +755,7 @@ public class SinovoBle  {
      *                 07 set the lock into DFU OTA , update Firmware
      * @param data  value
      */
-    public int setLockInfo(String dataType, String data){
+    public int setLockInfo(String dataType, String data, String lockSNO){
         int result = checkEnvir();
         if (result !=0){
             return result;
@@ -712,13 +769,13 @@ public class SinovoBle  {
             }
 
             String locknameAscii = ComTool.stringToAscii(data);
-            String setData = SinovoBle.getInstance().getLockSNO() + locknameAscii;
+            String setData = lockSNO + locknameAscii;
             BleData.getInstance().exeCommand("11", setData, false);
         }
 
         //设置锁的时间
         if (dataType.equals("02")){
-            String setData = SinovoBle.getInstance().getLockSNO() + data;
+            String setData = lockSNO + data;
             BleData.getInstance().exeCommand("10", setData, false);
         }
 
@@ -737,7 +794,7 @@ public class SinovoBle  {
                 }
             }
 
-            String setData = SinovoBle.getInstance().getLockSNO() + sixteen;
+            String setData = lockSNO + sixteen;
             BleData.getInstance().exeCommand("16", setData, false);
         }
 
@@ -751,7 +808,7 @@ public class SinovoBle  {
                 return 2;
             }
 
-            String setData = SinovoBle.getInstance().getLockSNO() + data;
+            String setData = lockSNO + data;
             if (dataType.equals("04")){
                 BleData.getInstance().exeCommand("1c", setData, false);
             }else {
@@ -761,14 +818,14 @@ public class SinovoBle  {
 
         //设置超级用户的权限
         if (dataType.equals("06")){
-            String setData = SinovoBle.getInstance().getLockSNO() + data;
+            String setData = lockSNO + data;
             BleData.getInstance().exeCommand("23", setData, false);
         }
 
         //设置进入ota升级模式
         if (dataType.equals("07")){
-            String setData = SinovoBle.getInstance().getLockSNO() ;
-            BleData.getInstance().exeCommand("19", setData, false);
+//            String setData = SinovoBle.getInstance().getLockSNO() ;
+            BleData.getInstance().exeCommand("19", lockSNO, false);
         }
 
         return 0;
@@ -789,24 +846,23 @@ public class SinovoBle  {
      *                 10 get the superUser's priority
      *                 11 get the basetime of the lock
      */
-    public int getLockInfo(String dataType){
+    public int getLockInfo(String dataType ,String lockSNO){
         int result = checkEnvir();
         if (result !=0){ return result; }
 
-        String data = SinovoBle.getInstance().getLockSNO();
-        if (dataType.equals("01")){ BleData.getInstance().exeCommand("12", data, false); }
-        if (dataType.equals("02")){ BleData.getInstance().exeCommand("0e", data, false); }
-        if (dataType.equals("03")){ BleData.getInstance().exeCommand("0f", data, false); }
-        if (dataType.equals("04")){ BleData.getInstance().exeCommand("1a", data, false); }
+        if (dataType.equals("01")){ BleData.getInstance().exeCommand("12", lockSNO, false); }
+        if (dataType.equals("02")){ BleData.getInstance().exeCommand("0e", lockSNO, false); }
+        if (dataType.equals("03")){ BleData.getInstance().exeCommand("0f", lockSNO, false); }
+        if (dataType.equals("04")){ BleData.getInstance().exeCommand("1a", lockSNO, false); }
 
         //add by wrk at 20210315
-        if (dataType.equals("05")){ BleData.getInstance().exeCommand("11", data, false); }
-        if (dataType.equals("06")){ BleData.getInstance().exeCommand("10", data, false); }
-        if (dataType.equals("07")){ BleData.getInstance().exeCommand("16", data, false); }
-        if (dataType.equals("08")){ BleData.getInstance().exeCommand("1c", data, false); }
-        if (dataType.equals("09")){ BleData.getInstance().exeCommand("09", data, false); }
-        if (dataType.equals("10")){ BleData.getInstance().exeCommand("23", data, false); }
-        if (dataType.equals("11")){ BleData.getInstance().exeCommand("1f", data, false); }
+        if (dataType.equals("05")){ BleData.getInstance().exeCommand("11", lockSNO, false); }
+        if (dataType.equals("06")){ BleData.getInstance().exeCommand("10", lockSNO, false); }
+        if (dataType.equals("07")){ BleData.getInstance().exeCommand("16", lockSNO, false); }
+        if (dataType.equals("08")){ BleData.getInstance().exeCommand("1c", lockSNO, false); }
+        if (dataType.equals("09")){ BleData.getInstance().exeCommand("09", lockSNO, false); }
+        if (dataType.equals("10")){ BleData.getInstance().exeCommand("23", lockSNO, false); }
+        if (dataType.equals("11")){ BleData.getInstance().exeCommand("1f", lockSNO, false); }
 
         return 0;
     }
@@ -814,29 +870,14 @@ public class SinovoBle  {
     /**
      * 同步数据，包括用户信息
      */
-    public int getAllUsers(){
+    public int getAllUsers(String lockSNO){
         int result = checkEnvir();
         if (result !=0){
             return result;
         }
 
-        String data = SinovoBle.getInstance().getLockSNO() +"00";
+        String data = lockSNO +"00";
         BleData.getInstance().exeCommand("13", data, false);
-        return 0;
-    }
-
-    /**
-     * 同步数据，包括用户信息 和绑定的手机
-     */
-    public int getAllBoundPhone(){
-        int result = checkEnvir();
-        if (result !=0){
-            return result;
-        }
-
-        String data = SinovoBle.getInstance().getLockSNO() +"0e";
-        BleData.getInstance().exeCommand("13", data, false);
-
         return 0;
     }
 
@@ -844,13 +885,13 @@ public class SinovoBle  {
      * 同步日志
      * @param logID  ，表示当前的日志id ,日志量比较大，所以支持从指定的id开始同步，如果 id为 ff ，则同步所有的日志
      */
-    public int getLog(String logID){
+    public int getLog(String logID, String lockSNO){
 
         int result = checkEnvir();
         if (result !=0){
             return result;
         }
-        String data = SinovoBle.getInstance().getLockSNO() + logID;
+        String data = lockSNO + logID;
         BleData.getInstance().exeCommand("17", data, false);
 
         return 0;
@@ -861,7 +902,7 @@ public class SinovoBle  {
      * @param dynamicCode  对应的 动态密码
      * @param enable  00 表示禁用， 01 表示启动
      */
-    public void doDynamicCode(String dynamicCode, String enable){
+    public void doDynamicCode(String dynamicCode, String enable, String lockSNO){
         if (dynamicCode.isEmpty() ||!(enable.equals("00") || enable.equals("01"))){
             Log.e(TAG,"Parameter error");
             return;
@@ -872,7 +913,7 @@ public class SinovoBle  {
             return;
         }
 
-        String data = SinovoBle.getInstance().getLockSNO() + enable + dynamicCode;
+        String data = lockSNO + enable + dynamicCode;
         BleData.getInstance().exeCommand("20", data, false);
     }
 
@@ -883,7 +924,7 @@ public class SinovoBle  {
      * @param codeID       密码的id
      * @param newCodeType  新的密码类型 ，02 普通密码，03 超级用户密码; 该字段为空，则表示查询此密码的类型
      */
-    public int updateCodeType(String oldCodeType, String codeID, String newCodeType){
+    public int updateCodeType(String oldCodeType, String codeID, String newCodeType, String lockSNO){
         if (oldCodeType.isEmpty() || codeID.isEmpty()){
             Log.e(TAG,"Parameter error");
             return 2;
@@ -899,15 +940,15 @@ public class SinovoBle  {
         }
 
         if (newCodeType.equals("02")){
-            String data = SinovoBle.getInstance().getLockSNO() + oldCodeType + codeID + "00";
+            String data = lockSNO + oldCodeType + codeID + "00";
             BleData.getInstance().exeCommand("07", data, false);
         }
         if (newCodeType.equals("03")){
-            String data = SinovoBle.getInstance().getLockSNO() + oldCodeType + codeID + "01";
+            String data = lockSNO + oldCodeType + codeID + "01";
             BleData.getInstance().exeCommand("07", data, false);
         }
         if (newCodeType.isEmpty()){
-            String data = SinovoBle.getInstance().getLockSNO() + oldCodeType + codeID + "02";
+            String data = lockSNO + oldCodeType + codeID + "02";
             BleData.getInstance().exeCommand("07", data, false);
         }
         return 0;
@@ -917,7 +958,7 @@ public class SinovoBle  {
      * 校验密码
      * @param password 密码
      */
-    public int verifyCode(String password){
+    public int verifyCode(String password, String lockSNO){
         if (password.isEmpty()){
             Log.e(TAG,"Parameter error");
             return 2;
@@ -928,7 +969,7 @@ public class SinovoBle  {
             return result;
         }
 
-        String data = SinovoBle.getInstance().getLockSNO() + password;
+        String data = lockSNO + password;
         BleData.getInstance().exeCommand("08", data, true);
         return 0;
     }
@@ -936,14 +977,12 @@ public class SinovoBle  {
     /**
      * 通知锁端断开蓝牙连接
      */
-    public int toDisconnBle(){
+    public int toDisconnBle(String lockSNO){
         int result = checkEnvir();
         if (result !=0){
             return result;
         }
-
-        String data = SinovoBle.getInstance().getLockSNO();
-        BleData.getInstance().exeCommand("1e", data, true);
+        BleData.getInstance().exeCommand("1e", lockSNO, true);
         return 0;
     }
 
@@ -951,7 +990,7 @@ public class SinovoBle  {
      * 开关门操作
      * @param unlockType 00 表示锁门，01表示开门
      */
-    public int toUnlock(String unlockType, String code){
+    public int toUnlock(String unlockType, String code, String lockSNO){
         if (unlockType.isEmpty() || code.isEmpty() || !(unlockType.equals("00") || unlockType.equals("01"))){
             Log.e(TAG,"Parameter error");
             return 2;
@@ -962,7 +1001,7 @@ public class SinovoBle  {
             return result;
         }
 
-        String data = SinovoBle.getInstance().getLockSNO() + unlockType + code;
+        String data = lockSNO + unlockType + code;
         BleData.getInstance().exeCommand("0a", data, true);
 
         return 0;
@@ -972,11 +1011,10 @@ public class SinovoBle  {
      * 清空数据
      * @param datakType 表示清空数据的类型；
      *                  00 表示清空用户，不会删除管理员
-     *                  0e 表示清空所有的绑定手机
      *                  0c 表示恢复出厂设置
      *
      */
-    public int cleanData(String datakType){
+    public int cleanData(String datakType, String lockSNO){
         if (datakType.isEmpty()){
             Log.e(TAG,"Parameter error");
             return 2;
@@ -986,15 +1024,8 @@ public class SinovoBle  {
         if (result !=0){
             return result;
         }
-
-        //清空绑定的手机
-        if (datakType.equals("0e")){
-            String data = SinovoBle.getInstance().getLockSNO();
-            BleData.getInstance().exeCommand("1b", data, false);
-        }else {
-            String data = SinovoBle.getInstance().getLockSNO() + datakType;
-            BleData.getInstance().exeCommand("0c", data, false);
-        }
+        String data = lockSNO + datakType;
+        BleData.getInstance().exeCommand("0c", data, false);
         return 0;
     }
 
@@ -1132,10 +1163,17 @@ public class SinovoBle  {
 
         //更加 UUID 来过滤
         List<ScanFilter> filters = new ArrayList<>();
-        ScanFilter filter1 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_FM60)).build();
-        ScanFilter filter2 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_FM67)).build();
-        filters.add(filter1);
-        filters.add(filter2);
+
+        if (SinovoBle.getInstance().isDfuMode()){
+            Log.d(TAG, "DFU MAC:"+ getDfu_mac());
+            ScanFilter filter1 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_DFU)).build();
+            filters.add(filter1);
+        }else {
+            ScanFilter filter1 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_FM60)).build();
+            ScanFilter filter2 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_FM67)).build();
+            filters.add(filter1);
+            filters.add(filter2);
+        }
 
         Log.d(TAG, "Start scanning");
         //扫描间隔，开始扫描之后，间隔到指定时间，然后停止扫描，再重新开始扫描
@@ -1212,7 +1250,21 @@ public class SinovoBle  {
 
 
     //进行 dfu 升级, dfu 升级的mac地址与正常通信的不一样，需要加+1
-    public void upgradeFW(Context context, String mac, String dfuPath){
+    public void upgradeFW(Context context, String mac  ,String dfuPath){
+
+        SinovoBle.getInstance().setLinked(false);
+        SinovoBle.getInstance().setConnected(false);
+        SinovoBle.getInstance().setConnectting(false);
+        BleData.getInstance().setExeCmding(false);
+
+        //先保存下 原来自动连接列表的锁
+        if (getToConnectLockList().size() >0){
+            BleConnectLock bleConnectLock = getToConnectLockList().get(0);
+            if (!bleConnectLock.getLockSno().isEmpty()){
+                setBleConnectLock_dfu(bleConnectLock);
+            }
+        }
+
         String hexmac;
         if (mac.contains(":")){
             hexmac = mac.replace(":","");
@@ -1237,9 +1289,13 @@ public class SinovoBle  {
                 upMacAddress.append(":");
             }
         }
-        Log.d(TAG,"生成的mac地址："+ upMacAddress);
+        Log.d(TAG,"生成的mac地址："+ upMacAddress.toString().toUpperCase());
 
-        DfuUtils.getInstance().startUpdate(context,upMacAddress.toString().toUpperCase(),"DfuTarg", dfuPath);
+        SinovoBle.getInstance().setDfu_mac(upMacAddress.toString().toUpperCase());
+        SinovoBle.getInstance().setDfuMode(true);
+        setScanAgain(true);
+        startBleScan();
+        DfuUtils.getInstance().startUpdate(context,upMacAddress.toString().toUpperCase(),"lockDFU", dfuPath);
     }
 
     //取消升级
@@ -1249,60 +1305,9 @@ public class SinovoBle  {
 
     //对外提供断开连接
     public void disconnBle(){
+        SinovoBle.getInstance().getToConnectLockList().clear();
+        SinovoBle.getInstance().setScanAgain(false);
+
         BleConnCallBack.getInstance().disConectBle();
     }
-
-    //对外提供断开连接  close 释放资源
-    public void releaseBle(){
-        BleConnCallBack.getInstance().releaseBle();
-    }
-
-    public String getLockGWid() {
-        return lockGWid;
-    }
-
-    public void setLockGWid(String lockGWid) {
-        this.lockGWid = lockGWid;
-    }
-
-    public boolean isLinked() {
-        return isLinked;
-    }
-
-    public void setLinked(boolean linked) {
-        isLinked = linked;
-    }
-
-    public void setConnectting(boolean connectting) {
-        isConnectting = connectting;
-    }
-
-    public boolean isConnectting() {
-        return isConnectting;
-    }
-
-    public void setConnectTime(String connectTime) {
-        this.connectTime = connectTime;
-    }
-
-    public String getConnectTime() {
-        return connectTime;
-    }
-
-    public String getConnectingMac() {
-        return connectingMac;
-    }
-
-    public void setConnectingMac(String connectingMac) {
-        this.connectingMac = connectingMac;
-    }
-
-    public boolean isScanOnly() {
-        return isScanOnly;
-    }
-
-    public void setScanOnly(boolean scanOnly) {
-        isScanOnly = scanOnly;
-    }
-
 }
