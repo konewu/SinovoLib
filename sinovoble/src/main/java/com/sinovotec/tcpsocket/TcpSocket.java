@@ -235,7 +235,7 @@ public class TcpSocket {
                                                     sendFaild(cmd);
                                                     break;
                                                 } else {
-                                                    Thread.sleep(200);
+                                                   // Thread.sleep(200);
                                                     writer.write(cmd.getBytes());
                                                     writer.flush();
                                                     tcpSendHander.postDelayed(() -> checkDataReceive(cmd), timeOut);
@@ -278,7 +278,7 @@ public class TcpSocket {
         isConnected = false;
         isSending = false;
         if (!msg.isEmpty()) {
-            MqttLib.getInstance().getDataToSend(msg, "", "");
+            MqttLib.getInstance().getDataToSend(msg);
         }
     }
 
@@ -287,7 +287,7 @@ public class TcpSocket {
         Log.i(TAG, "数据通过tcp socket发送出去 3秒没有收到回复 "+ msgcmd);
 
         if (!msgcmd.isEmpty()){
-            MqttLib.getInstance().getDataToSend(msgcmd, "", "");
+            MqttLib.getInstance().getDataToSend(msgcmd);
         }
 
         if (isConnected){

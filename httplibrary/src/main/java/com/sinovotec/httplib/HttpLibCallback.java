@@ -1,9 +1,5 @@
 package com.sinovotec.httplib;
 
-import android.graphics.Bitmap;
-
-import com.alibaba.fastjson.JSONObject;
-
 public interface HttpLibCallback {
 
     //用户注册的回调
@@ -84,4 +80,9 @@ public interface HttpLibCallback {
     //恢复出厂设置后，调用此接口，服务器会 通过mqtt 推送通知其他用户
     void onResetLock(String result);
 
+    //删除网关下的子设备 锁，同时断开网关与锁的蓝牙连接
+    void onDelGwSubLock(String result);
+
+    //上传日志文件
+    void onUploadFile(String result);
 }

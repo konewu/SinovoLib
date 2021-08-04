@@ -8,7 +8,7 @@ public interface IConnectCallback {
     void onConnectSuccess(String macAddress);
 
     //连接失败
-    void onConnectFailure();
+    void onConnectFailure(String macAddress);
 
     //连接断开
     void onBleDisconnect(String macaddress);

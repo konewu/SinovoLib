@@ -32,22 +32,25 @@ public class BluetoothListenerReceiver extends BroadcastReceiver {
                     break;
                 case BluetoothAdapter.STATE_ON:
                     Log.e(TAG, "onReceive---------Bluetooth is on");
-                    if (SinovoBle.getInstance().getLockGWid().isEmpty()) {
-                        Log.e(TAG, "Gateway's id is null. it's connect via bluetooth");
-                        BleConnCallBack.getInstance().setmBluetoothGatt(null);
-                        if (SinovoBle.getInstance().getmConnCallBack() != null) {
-                            SinovoBle.getInstance().setConnected(false);
-                            SinovoBle.getInstance().setLinked(false);
-                            SinovoBle.getInstance().getmConnCallBack().onBluetoothOn();
-                        }
-                    }else {
-                        Log.e(TAG, "Gateway's id is not null. it's connect via gateway");
+                    //重新初始化 蓝牙
+                    SinovoBle.getInstance().init(SinovoBle.getInstance().getContext(),
+                                SinovoBle.getInstance().getmBleScanCallBack(), SinovoBle.getInstance().getmConnCallBack());
+
+                    BleConnCallBack.getInstance().setmBluetoothGatt(null);
+                    if (SinovoBle.getInstance().getmConnCallBack() != null) {
+                        SinovoBle.getInstance().setConnected(false);
+                        SinovoBle.getInstance().setConnectting(false);
+                        SinovoBle.getInstance().setLinked(false);
+                        SinovoBle.getInstance().getmConnCallBack().onBluetoothOn();
                     }
                     break;
                 case BluetoothAdapter.STATE_TURNING_OFF:
                     Log.e(TAG, "onReceive---------Bluetooth is turning off");
                     if (SinovoBle.getInstance().getmConnCallBack()!= null) {
-                        SinovoBle.getInstance().getmConnCallBack().onBluetoothOff();
+                        if (!SinovoBle.getInstance().isRestartBLE()) {
+                            SinovoBle.getInstance().getmConnCallBack().onBluetoothOff();
+                        }
+                        SinovoBle.getInstance().setRestartBLE(false);
                     }
 
                     if (SinovoBle.getInstance().isBleConnected()){

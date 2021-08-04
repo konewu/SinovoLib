@@ -10,6 +10,12 @@ public interface IScanCallBack {
     //扫描超时
     void onScanTimeout(String scanResult);
 
+    //20s内扫描不到任何设备
+    void onNotFoundBles20s();
+
+    //40s内扫描不到指定的锁
+    void onNotFoundLock40s();
+
     //测试
 //    void onScanTest(String scanResult);
 }

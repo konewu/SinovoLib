@@ -10,7 +10,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.sinovotec.sinovoble.SinovoBle;
 import com.sinovotec.sinovoble.common.BleData;
 import com.sinovotec.sinovoble.common.ComTool;
-import com.sinovotec.tcpsocket.TcpSocket;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
@@ -48,7 +47,7 @@ public class MqttLib {
     private int tcpSendFaild = 0;           //一分钟内 连续3次使用 tcp socket发送失败，则在这一分钟内 不再尝试用 tcp socket的方式
     private long  tcpSendFaildInter = 0;
     private int  connectType = 0;           //0 未知，1为 wifi， 2为 手机数据
-    private String wifiSSID = "";           //获取当前手机的wifi ssid
+//    private String wifiSSID = "";           //获取当前手机的wifi ssid
 
     public static MqttLib getInstance() {
         if (instance == null) {
@@ -88,8 +87,8 @@ public class MqttLib {
         String userName = "";
         String passWord = "";
 
-        setConnectType(ComTool.getNetType(context));
-        setWifiSSID(ComTool.getWifiName(context));
+//        setConnectType(ComTool.getNetType(context));
+//        setWifiSSID(ComTool.getWifiName(context));
 
         /* 获取Mqtt建连信息clientId, username, password */
         AiotMqttOption aiotMqttOption = new AiotMqttOption().getMqttOption(proKey, deName, deSecret);
@@ -127,7 +126,7 @@ public class MqttLib {
             @Override
             public void messageArrived(String topic, MqttMessage message) {
                 String msg = new String(message.getPayload());
-                Log.i(TAG, "收到 mqtt的信息，topic: " + topic + ", msg: " + msg);
+//                Log.i(TAG, "收到 mqtt的信息，topic: " + topic + ", msg: " + msg);
                 if (msg.contains("bledata")){
                     bleSendHandler.removeCallbacksAndMessages(null);    //取消定时任务
                 }else {
@@ -253,9 +252,10 @@ public class MqttLib {
 
                     //延迟30秒后再检测 是否已经收到锁端的恢复
                     if (payload.contains("send2lock")){
-                        bleSendHandler.postDelayed(() -> checkDataReceive("send2lock"), 20*1000);
-                    }else {
-                        mqttSendHandler.postDelayed(() -> checkDataReceive("send2GW"), 10*1000);
+                        bleSendHandler.postDelayed(() -> checkDataReceive("send2lock"), 12*1000);
+                    }
+                    if (payload.contains("send2GW")){
+                        bleSendHandler.postDelayed(() -> checkDataReceive("send2lock"), 10*1000);
                     }
                 }
 
@@ -365,45 +365,45 @@ public class MqttLib {
      * @param mac   锁的mac地址
      * @param data  发送的数据
      */
-    private void getDataToSend(final String gatewayid, final String gwIP, final String gwWifiSSID, final String type, final String uuid,
+    private void getDataToSend(final String gatewayid, final String type, final String uuid,final String pm,
                               final String mac, final String data){
-        SinovoBle.getInstance().setLockGWid(gatewayid);   //使用网关通信时，需要设置网关id
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("gateway_id", gatewayid);
         map.put("type", type);
         map.put("uuid", uuid);
+        map.put("pm",pm);
         map.put("mac", mac.toUpperCase());      //mac地址要大写
         map.put("data", data);
         JSONObject json = new JSONObject(map);
 
         //增加此机制，连续3次tcp 发送失败，则1分钟内不会再 使用 tcp发送，直接用 mqtt 发送
-        long timecurrentTimeMillis = System.currentTimeMillis();
-        long diff = timecurrentTimeMillis - getTcpSendFaildInter();
+//        long timecurrentTimeMillis = System.currentTimeMillis();
+//        long diff = timecurrentTimeMillis - getTcpSendFaildInter();
+//
+//        boolean sendByMqtt = true;
 
-        boolean sendByMqtt = true;
-
-        Log.w(TAG, "连接类型："+ getConnectType() + ",ssid:"+ getWifiSSID() + ",gwssid:"+ gwWifiSSID + ",gwip:"+gwIP + ",diff:"+ diff + ",tcp:"+ tcpSendFaild);
-        if (getConnectType() == 1 && getWifiSSID().equals(gwWifiSSID) && !gwIP.isEmpty()){
-            if (tcpSendFaild >3 ){
-                if (diff > 60){
-                    sendByMqtt = false;
-                }
-            }else {
-                sendByMqtt = false;
-            }
-        }
+//        Log.w(TAG, "连接类型："+ getConnectType() + ",ssid:"+ getWifiSSID() + ",gwssid:"+ gwWifiSSID + ",gwip:"+gwIP + ",diff:"+ diff + ",tcp:"+ tcpSendFaild);
+//        if (getConnectType() == 1 && getWifiSSID().equals(gwWifiSSID) && !gwIP.isEmpty()){
+//            if (tcpSendFaild >3 ){
+//                if (diff > 60){
+//                    sendByMqtt = false;
+//                }
+//            }else {
+//                sendByMqtt = false;
+//            }
+//        }
 
         //先关闭 tcp socket 发包的功能，待网关bug解决后再开启， 20210330
-        sendByMqtt = true;
+//        sendByMqtt = true;
 
         if (isMqttOK){
-            if (sendByMqtt) {
+//            if (sendByMqtt) {    //去掉tcp
                 Log.d(TAG, "send command via mqtt:" + json.toString());
                 publishMessage(json.toString());
-            }else {
-                Log.d(TAG, "send command via TCP:" + json.toString());
-                TcpSocket.getInstance(iotMqttCallback).sendData(gwIP, 8080, json.toString());
-            }
+//            }else {
+//                Log.d(TAG, "send command via TCP:" + json.toString());
+//                TcpSocket.getInstance(iotMqttCallback).sendData(gwIP, 8080, json.toString());
+//            }
         }else{
             Log.d(TAG, "MQTT is not ready, it cann't send command:" + json.toString());
         }
@@ -413,34 +413,10 @@ public class MqttLib {
      * 直接传递的json格式的数据 ， 绑定的时候用的
      * @param jsonData string
      */
-    public void getDataToSend(final String jsonData, final String gwIP, String gwWifiSSID){
-        //增加此机制，连续3次tcp 发送失败，则1分钟内不会再 使用 tcp发送，直接用 mqtt 发送
-        long timecurrentTimeMillis = System.currentTimeMillis();
-        long diff = timecurrentTimeMillis - getTcpSendFaildInter();
-
-        boolean sendByMqtt = true;
-
-        Log.w(TAG, "连接类型："+ getConnectType() + ",ssid:"+ getWifiSSID() + ",gwssid:"+ gwWifiSSID + ",gwip:"+gwIP + ",diff:"+ diff + ",tcp:"+ tcpSendFaild);
-        if (getConnectType() == 1 && getWifiSSID().equals(gwWifiSSID) && !gwIP.isEmpty()){
-            if (tcpSendFaild >3 ){
-                if (diff > 60){
-                    sendByMqtt = false;
-                }
-            }else {
-                sendByMqtt = false;
-            }
-        }
-
-        //先关闭 tcp socket 发包的功能，待网关bug解决后再开启， 20210330
-        sendByMqtt = true;
+    public void getDataToSend(final String jsonData){
         if (isMqttOK){
-            if (sendByMqtt) {
-                Log.d(TAG, "send command via mqtt: " + jsonData);
-                publishMessage(jsonData);
-            }else {
-                Log.d(TAG, "send command via TCP: " + jsonData);
-                TcpSocket.getInstance(iotMqttCallback).sendData(gwIP, 8080, jsonData);
-            }
+            Log.d(TAG, "send command via mqtt: " + jsonData);
+            publishMessage(jsonData);
         }else{
             Log.d(TAG, "MQTT is not ready, it cann't send command:" + jsonData);
         }
@@ -461,12 +437,12 @@ public class MqttLib {
 
     private void checkDataReceive(String dataType){
         if (dataType.equals("send2lock")){
-            Log.d(TAG,"The command sent to lock over mqtt has timed out, 20s");
+            Log.d(TAG,"The command sent to lock via mqtt has timed out, 12s");
             iotMqttCallback.onReceiveBLETimeout();
         }
 
         if (dataType.equals("send2GW")){
-            Log.d(TAG,"The command sent to gateway over mqtt has timed out, 10s");
+            Log.d(TAG,"The command sent to gateway via mqtt has timed out, 10s");
             iotMqttCallback.onReceiveMQTTTimeout();
         }
 
@@ -480,14 +456,14 @@ public class MqttLib {
      * 创建用户,默认创建的是普通用户
      * @param userName string
      */
-    public void addUser(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String userName){
+    public void addUser(String gatewayid, String type, String uuid, String pm, String mac, String sno, String userName){
         if (userName.isEmpty() || userName.length()>10){
             return;
         }
 
         String data = sno + ComTool.stringToAscii(userName);
         String datasend = mqttCommand("02", data,mac);
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
     /**
@@ -495,7 +471,7 @@ public class MqttLib {
      * @param userName 用户名
      * @param userNID   用户的nid
      */
-    public void updateUserName(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String userName, String userNID){
+    public void updateUserName(String gatewayid, String type, String uuid, String pm, String mac, String sno, String userName, String userNID){
         if (userNID.isEmpty() || userName.length()>10 ){
             Log.e(TAG,"Parameter error");
             return;
@@ -509,7 +485,7 @@ public class MqttLib {
         String updateStr = sno +userNID + username;
         String datasend = mqttCommand("03", updateStr, mac);
       //  Log.d(TAG,"调用 addUser 来添加用户:"+ datasend);
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
 
     }
 
@@ -519,7 +495,7 @@ public class MqttLib {
      * @param dataType      数据类型， 02 普通密码，03超级用户密码，06是卡，07是指纹，08是防胁迫指纹
      * @param password      添加密码时具体的密码内容， 如果是添加卡/指纹时，留空即可
      */
-    public void addDataForUser(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String userNID, String dataType, String password){
+    public void addDataForUser(String gatewayid, String type, String uuid, String pm, String mac, String sno, String userNID, String dataType, String password){
         if (userNID.isEmpty() || dataType.isEmpty()){
             Log.e(TAG,"Parameter error");
             return;
@@ -543,7 +519,7 @@ public class MqttLib {
             datasend = mqttCommand("05", data, mac);
         }
 
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
     /**
@@ -551,7 +527,7 @@ public class MqttLib {
      * @param dataType s
      * @param delID s
      */
-    public void delData(String gatewayid, String gwip,String gwWifiSSID, String type, String uuid, String mac, String sno, String dataType, String delID){
+    public void delData(String gatewayid, String type, String uuid, String pm, String mac, String sno, String dataType, String delID){
         if (delID.isEmpty() || dataType.isEmpty()){
             Log.e(TAG,"Parameter error");
             return;
@@ -567,7 +543,7 @@ public class MqttLib {
             String data = sno + delID ;
             datasend = mqttCommand("1b", data, mac);
         }
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
 
     }
 
@@ -578,7 +554,7 @@ public class MqttLib {
      * @param codeID   密码的ID
      * @param newCode  新的密码
      */
-    public void resetCode(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno,
+    public void resetCode(String gatewayid, String type, String uuid, String pm, String mac, String sno,
                           String userNid, String codeType, String codeID, String newCode){
         if (userNid.isEmpty() || codeType.isEmpty() || codeID.isEmpty() || newCode.isEmpty()){
             Log.e(TAG,"Parameter error");
@@ -586,25 +562,26 @@ public class MqttLib {
         }
         String data = sno + userNid + codeType + codeID + newCode;
         String datasend = mqttCommand("0d", data, mac);
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
     /**
-     * 设置锁的相关属性
-     * @param dataType 设置类型
-     *                 01 设置锁名称，锁名称不能超过10个字符，如果为空，则表示查询锁名称
-     *                 02 锁的时间，时间格式YYMMDDHHMMSS ，如果为空，则表示查询锁端的时间
-     *                 03 自动锁门时间 ，范围 0-240 ；0表示关闭自动锁门
-     *                 04 设置静音模式，其值 00关闭静音，01为开启静音，如果为空，则表示查询当前静音状态
-     *                 05 设置绑定成功后，是否自动创建用户，如果为空，则表示查询当前设置
-     *                 06 设置超级用户的权限 其值如下：
-     *                    具有管理用户权限时，值为01，03，05，07，09，11，13，15
-     *                    具有分享密码权限时，值为02，03，06，07，10，11，14，15
-     *                    具有对锁设置权限时，值为04，05，06，07，12，13，14，15
-     *                    具有查看日志权限时，值为08，09，10，11，12，13，14，15
-     * @param data s
+     * Set properties of the lock
+     * @param dataType
+     *                 01 set lockname，1-10 characters
+     *                 02 set time of the lock，format :YYMMDDHHMMSS
+     *                 03 set auto-lock time ,0 means disable auto-lock
+     *                 04 set mute mode, 00 means disable the mute mode
+     *                 05 set auto-create user
+     *                 06 superuser's permission
+     *                     permission of share code:  data is 01,03,05,07,09,11,13,15
+     *                     permission of manager user: data is 02，03，06，07，10，11，14，15
+     *                     permission of setting: data is 04，05，06，07，12，13，14，15
+     *                     permission of checking log: data is 08，09，10，11，12，13，14，15
+     *
+     * @param data  value
      */
-    public void setLock(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String dataType, String data){
+    public void setLock(String gatewayid, String type, String uuid, String pm, String mac, String sno, String dataType, String data){
 
         String datasend = "";
         //设置锁的名称
@@ -646,16 +623,21 @@ public class MqttLib {
 
         //设置静音 和绑定后自动创建用户
         if (dataType.equals("04") || dataType.equals("05")){
-            if (Integer.parseInt(data)<0 || Integer.parseInt(data)>2){
+            if (Integer.parseInt(data)<0 ){
                 Log.e(TAG,"Parameter error");
                 return;
             }
 
-            String setData = sno + data;
             if (dataType.equals("04")){
-                datasend = mqttCommand("1c", setData, mac);
+                String sixteen = Integer.toHexString(Integer.parseInt(data));
+                if (sixteen.length() <2){
+                    sixteen = "0"+sixteen;
+                }
+                String setData = sno + sixteen;
+                BleData.getInstance().exeCommand("1c", setData, false);
             }else {
-                datasend = mqttCommand("09", setData, mac);
+                String setData = sno + data;
+                BleData.getInstance().exeCommand("09", setData, false);
             }
         }
 
@@ -664,60 +646,64 @@ public class MqttLib {
             String setData = sno + data;
             datasend = mqttCommand("23", setData, mac);
         }
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
 
     /**
-     * 查询锁端的信息
-     * @param dataType 查询的类型
-     *                 01 查询管理员信息
-     *                 02 查询锁的电量信息
-     *                 03 查询锁的当前状态
-     *                 04 查询锁的固件版本信息
+     * get information of the lock
+     * @param dataType
+     *                 01 get admin's info
+     *                 02 get power of the lock
+     *                 03 get status of the lock ,is it unlocked?
+     *                 04 get hardware information
+     *                 05 get the lockname
+     *                 06 get time of the lock
+     *                 07 get auto-lock time of the lock
+     *                 08 get the mute setting
+     *                 09 get the auto-create setting
+     *                 10 get the superUser's priority
+     *                 11 get the basetime of the lock
      */
-    public void getLockInfo(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String dataType){
+    public void getLockInfo(String gatewayid, String type, String uuid, String pm, String mac, String sno, String dataType){
         String datasend = "";
 
-        if (dataType.equals("01")){
-            datasend = mqttCommand("12", sno, mac);
-        }
+        if (dataType.equals("01")){ datasend = mqttCommand("12", sno, mac); }
+        if (dataType.equals("02")){ datasend = mqttCommand("0e", sno, mac); }
+        if (dataType.equals("03")){ datasend = mqttCommand("0f", sno, mac); }
+        if (dataType.equals("04")){ datasend = mqttCommand("1a", sno, mac); }
 
-        if (dataType.equals("02")){
-            datasend = mqttCommand("0e", sno, mac);
-        }
+        //add by wrk at 20210315
+        if (dataType.equals("05")){ datasend = mqttCommand("11", sno, mac); }
+        if (dataType.equals("06")){ datasend = mqttCommand("10", sno, mac); }
+        if (dataType.equals("07")){ datasend = mqttCommand("16", sno, mac); }
+        if (dataType.equals("08")){ datasend = mqttCommand("1c", sno, mac); }
+        if (dataType.equals("09")){ datasend = mqttCommand("09", sno, mac); }
+        if (dataType.equals("10")){ datasend = mqttCommand("23", sno, mac); }
+        if (dataType.equals("11")){ datasend = mqttCommand("1f", sno, mac); }
 
-        if (dataType.equals("03")){
-            datasend = mqttCommand("0f", sno, mac);
-        }
-
-        if (dataType.equals("04")){
-            datasend = mqttCommand("1a", sno, mac);
-        }
-
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
-
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
     /**
      * 同步数据，包括用户信息
      */
-    public void getAllUsers(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno){
+    public void getAllUsers(String gatewayid, String type, String uuid, String pm, String mac, String sno){
         String data = sno +"00";
         String  datasend = mqttCommand("13", data, mac);
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac, datasend);
     }
 
     /**
      * 同步日志
      * @param logID  ，表示当前的日志id ,日志量比较大，所以支持从指定的id开始同步，如果 id为 ff ，则同步所有的日志
      */
-    public void getLog(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String logID){
+    public void getLog(String gatewayid, String type, String uuid, String pm, String mac, String sno, String logID){
 
         String data = sno + logID;
         String datasend = mqttCommand("17", data, mac);
 
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
     /**
@@ -725,7 +711,7 @@ public class MqttLib {
      * @param dynamicCode  对应的 动态密码
      * @param enable  00 表示禁用， 01 表示启动
      */
-    public void doDynamicCode(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String dynamicCode, String enable){
+    public void doDynamicCode(String gatewayid, String type, String uuid, String pm, String mac, String sno, String dynamicCode, String enable){
         if (dynamicCode.isEmpty() ||!(enable.equals("00") || enable.equals("01"))){
             Log.e(TAG,"Parameter error");
             return;
@@ -734,7 +720,7 @@ public class MqttLib {
         String data = sno + enable + dynamicCode;
         String datasend = mqttCommand("20", data, mac);
 
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
 
@@ -744,7 +730,7 @@ public class MqttLib {
      * @param codeID       密码的id
      * @param newCodeType  新的密码类型 ，02 普通密码，03 超级用户密码; 该字段为空，则表示查询此密码的类型
      */
-    public void updateCodeType(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno,
+    public void updateCodeType(String gatewayid, String type, String uuid, String pm, String mac, String sno,
                                String oldCodeType,String codeID, String newCodeType){
         if (oldCodeType.isEmpty() || codeID.isEmpty()){
             Log.e(TAG,"Parameter error");
@@ -766,7 +752,7 @@ public class MqttLib {
             data = sno + oldCodeType + codeID + "02";
         }
         String datasend = mqttCommand("07", data, mac);
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
 
     }
 
@@ -774,7 +760,7 @@ public class MqttLib {
      * 校验密码
      * @param password 密码
      */
-    public void verifyCode(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String password){
+    public void verifyCode(String gatewayid, String type, String uuid, String pm, String mac, String sno, String password){
         if (password.isEmpty()){
             Log.e(TAG,"Parameter error");
             return;
@@ -783,23 +769,23 @@ public class MqttLib {
         String data = sno+ password;
         String datasend = mqttCommand("08", data, mac);
 
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
     /**
      * 通知锁端断开蓝牙连接
      */
-    public void toDisconnBle(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno){
+    public void toDisconnBle(String gatewayid, String type, String uuid, String pm, String mac, String sno){
       //  Log.d(TAG,"调用 toDisconnBle 来断开蓝牙连接");
         String datasend = mqttCommand("1e", sno, mac);
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
     /**
      * 开关门操作
      * @param unlockType 00 表示锁门，01表示开门
      */
-    public void toUnlock(String gatewayid, String gwip, String gwWifiSSID, String type, String uuid, String mac, String sno, String unlockType, String code){
+    public void toUnlock(String gatewayid, String type, String uuid, String pm, String mac, String sno, String unlockType, String code){
         if (unlockType.isEmpty() || code.isEmpty() || !(unlockType.equals("00") || unlockType.equals("01"))){
             Log.e(TAG,"Parameter error");
             return;
@@ -807,7 +793,7 @@ public class MqttLib {
         String data = sno + unlockType + code;
         String datasend = mqttCommand("0a", data, mac);
 
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
     /**
@@ -817,7 +803,7 @@ public class MqttLib {
      *                  0e 表示清空所有的绑定手机
      *                  0c 表示恢复出厂设置
      */
-    public void cleanData(String gatewayid, String gwip,String gwWifiSSID, String type, String uuid, String mac, String sno, String datakType){
+    public void cleanData(String gatewayid, String type, String uuid, String pm, String mac, String sno, String datakType){
         if (datakType.isEmpty()){
             Log.e(TAG,"Parameter error");
             return;
@@ -833,13 +819,11 @@ public class MqttLib {
             datasend = mqttCommand("0c", data, mac);
         }
 
-        getDataToSend(gatewayid, gwip, gwWifiSSID, type, uuid, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
     }
 
     public String mqttCommand(String funcode, String data,String mac){
-        String data_result = SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data.toLowerCase(), mac.replace(":",""));
-        Log.d(TAG, "mqttCommand 生成的命令："+ data_result);
-        return data_result;
+        return SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data.toLowerCase(), mac.replace(":",""));
     }
 
     public void removeBleHandlerCallback(){
@@ -858,27 +842,27 @@ public class MqttLib {
         return tcpSendFaild;
     }
 
-    public long getTcpSendFaildInter() {
-        return tcpSendFaildInter;
-    }
+//    public long getTcpSendFaildInter() {
+//        return tcpSendFaildInter;
+//    }
 
     public void setTcpSendFaildInter(long tcpSendFaildInter) {
         this.tcpSendFaildInter = tcpSendFaildInter;
     }
 
-    public int getConnectType() {
-        return connectType;
-    }
+//    public int getConnectType() {
+//        return connectType;
+//    }
 
     public void setConnectType(int connectType) {
         this.connectType = connectType;
     }
 
-    public String getWifiSSID() {
-        return wifiSSID;
-    }
+//    public String getWifiSSID() {
+//        return wifiSSID;
+//    }
 
-    public void setWifiSSID(String wifiSSID) {
-        this.wifiSSID = wifiSSID;
-    }
+//    public void setWifiSSID(String wifiSSID) {
+//        this.wifiSSID = wifiSSID;
+//    }
 }

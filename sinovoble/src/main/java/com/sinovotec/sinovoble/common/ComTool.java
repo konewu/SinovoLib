@@ -2,29 +2,18 @@ package com.sinovotec.sinovoble.common;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
 import com.alibaba.fastjson.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Random;
 
 public class ComTool {
@@ -276,104 +265,104 @@ public class ComTool {
         return wifiInfo.getSSID().replace("\"","");
     }
 
-    /**
-     * 创建目录文件夹
-     * @param dirPath 文件夹
-     */
-    public static String createDir(String dirPath) {
+//    /**
+//     * 创建目录文件夹
+//     * @param dirPath 文件夹
+//     */
+//    public static String createDir(String dirPath) {
+//
+//        File dirFile = new File(dirPath);
+//        String imei = "";
+//
+//        Log.d("SinovoLib","准备的路径：" + dirPath);
+//        if (!dirFile.exists()) {
+//            try {
+//                boolean mkdirs = dirFile.mkdirs();
+//                if (mkdirs) {
+//                    Log.e("SinovoLib", "文件夹 " + dirPath + " 创建成功");
+//                    String filename = dirPath + "/imei.txt";
+//                    imei = writeFileData(filename, generateIMEI());
+//                } else {
+//                    Log.e("SinovoLib", "文件夹 " + dirPath + " 创建失败");
+//                }
+//            } catch (Exception e) {
+//                Log.e("SinovoLib", "文件夹 " + dirPath + " 创建失败: " + e.getMessage());
+//            }
+//        } else {
+//            Log.e("SinovoLib", "文件夹 " + dirPath + " 已经存在");
+//            String filename = dirPath + "/imei.txt";
+//            imei = writeFileData(filename, generateIMEI());
+//        }
+//        return imei;
+//    }
 
-        File dirFile = new File(dirPath);
-        String imei = "";
-
-        Log.d("SinovoLib","准备的路径：" + dirPath);
-        if (!dirFile.exists()) {
-            try {
-                boolean mkdirs = dirFile.mkdirs();
-                if (mkdirs) {
-                    Log.e("SinovoLib", "文件夹 " + dirPath + " 创建成功");
-                    String filename = dirPath + "/imei.txt";
-                    imei = writeFileData(filename, generateIMEI());
-                } else {
-                    Log.e("SinovoLib", "文件夹 " + dirPath + " 创建失败");
-                }
-            } catch (Exception e) {
-                Log.e("SinovoLib", "文件夹 " + dirPath + " 创建失败: " + e.getMessage());
-            }
-        } else {
-            Log.e("SinovoLib", "文件夹 " + dirPath + " 已经存在");
-            String filename = dirPath + "/imei.txt";
-            imei = writeFileData(filename, generateIMEI());
-        }
-        return imei;
-    }
-
-    /**
-     * 向文件中写入内容
-     *
-     //* @param filename 文件名
-     //* @param content  写入的内容，为imei
-     */
-    private static String writeFileData(String filename, String content) {
-        String imei = "";
-        try {
-            File fs = new File(filename);
-            if (fs.exists()) {
-                imei = getFileContent(fs);
-                if (!imei.isEmpty()) {
-                    Log.d("SinovoLib", "imei文件已经存在,无需继续写入,读取出内容：" + imei);
-                    return imei;
-                }else {
-                    Log.e("SinovoLib", "imei文件已经存在,但读取不到内容");
-                }
-            }
-
-            Log.d("SinovoLib", "imei文件不存在,新建并写入imei:" + content);
-            FileOutputStream outputStream = new FileOutputStream(fs);
-            outputStream.write(content.getBytes());
-            outputStream.flush();
-            outputStream.close();
-            Log.e("SinovoLib", "写入 Successful");
-            imei = content;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return imei;
-    }
+//    /**
+//     * 向文件中写入内容
+//     *
+//     //* @param filename 文件名
+//     //* @param content  写入的内容，为imei
+//     */
+//    private static String writeFileData(String filename, String content) {
+//        String imei = "";
+//        try {
+//            File fs = new File(filename);
+//            if (fs.exists()) {
+//                imei = getFileContent(fs);
+//                if (!imei.isEmpty()) {
+//                    Log.d("SinovoLib", "imei文件已经存在,无需继续写入,读取出内容：" + imei);
+//                    return imei;
+//                }else {
+//                    Log.e("SinovoLib", "imei文件已经存在,但读取不到内容");
+//                }
+//            }
+//
+//            Log.d("SinovoLib", "imei文件不存在,新建并写入imei:" + content);
+//            FileOutputStream outputStream = new FileOutputStream(fs);
+//            outputStream.write(content.getBytes());
+//            outputStream.flush();
+//            outputStream.close();
+//            Log.e("SinovoLib", "写入 Successful");
+//            imei = content;
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//
+//        return imei;
+//    }
 
     //读取指定目录下的所有TXT文件的文件内容
-    private static String getFileContent(File file) {
-        StringBuilder content = new StringBuilder();
-        if (!file.isDirectory()) {  //检查此路径名的文件是否是一个目录(文件夹)
-            if (file.getName().endsWith("txt")) {//文件格式为""文件
-                try {
-                    InputStream instream = new FileInputStream(file);
-                    InputStreamReader inputreader = new InputStreamReader(instream, StandardCharsets.UTF_8);
-                    BufferedReader buffreader = new BufferedReader(inputreader);
-                    String line;
-                    //分行读取
-                    while ((line = buffreader.readLine()) != null) {
-                        content.append(line);
-                    }
-                    instream.close();//关闭输入流
-                } catch (java.io.FileNotFoundException e) {
-                    Log.e("SinovoLib", "The File doesn't not exist.");
-                } catch (IOException e) {
-                    Log.d("SinovoLib", Objects.requireNonNull(e.getMessage()));
-                }
-            }
-        }
-        return content.toString();
-    }
+//    private static String getFileContent(File file) {
+//        StringBuilder content = new StringBuilder();
+//        if (!file.isDirectory()) {  //检查此路径名的文件是否是一个目录(文件夹)
+//            if (file.getName().endsWith("txt")) {//文件格式为""文件
+//                try {
+//                    InputStream instream = new FileInputStream(file);
+//                    InputStreamReader inputreader = new InputStreamReader(instream, StandardCharsets.UTF_8);
+//                    BufferedReader buffreader = new BufferedReader(inputreader);
+//                    String line;
+//                    //分行读取
+//                    while ((line = buffreader.readLine()) != null) {
+//                        content.append(line);
+//                    }
+//                    instream.close();//关闭输入流
+//                } catch (java.io.FileNotFoundException e) {
+//                    Log.e("SinovoLib", "The File doesn't not exist.");
+//                } catch (IOException e) {
+//                    Log.d("SinovoLib", Objects.requireNonNull(e.getMessage()));
+//                }
+//            }
+//        }
+//        return content.toString();
+//    }
 
-    /**
-     * 生成 6个字节的IMEI
-     *
-     * @return a
-     */
-    public static String generateIMEI() {
-        return getRndNumber(12, 15, 16);
-    }
+//    /**
+//     * 生成 6个字节的IMEI
+//     *
+//     * @return a
+//     */
+//    public static String generateIMEI() {
+//        return getRndNumber(12, 15, 16);
+//    }
 
 
     /**
@@ -420,26 +409,26 @@ public class ComTool {
         return isJsonObject || isJsonArray;
     }
 
-    /**
-     * 判断手机是否连接了wifi
-     * @param mContext 上下文对象
-     * @return int  ,  0 未知，1为 wifi， 2为 手机数据
-     */
-    public static int getNetType(Context mContext) {
-        int connectType = 0;
-        ConnectivityManager connectivityManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetInfo = Objects.requireNonNull(connectivityManager).getActiveNetworkInfo();
-
-        if (activeNetInfo != null){
-            if (activeNetInfo.getType() == ConnectivityManager.TYPE_WIFI){
-                connectType = 1;
-            }
-            if (activeNetInfo.getType() == ConnectivityManager.TYPE_MOBILE){
-                connectType = 2;
-            }
-        }
-        return connectType;
-    }
+//    /**
+//     * 判断手机是否连接了wifi
+//     * @param mContext 上下文对象
+//     * @return int  ,  0 未知，1为 wifi， 2为 手机数据
+//     */
+//    public static int getNetType(Context mContext) {
+//        int connectType = 0;
+//        ConnectivityManager connectivityManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+//        NetworkInfo activeNetInfo = Objects.requireNonNull(connectivityManager).getActiveNetworkInfo();
+//
+//        if (activeNetInfo != null){
+//            if (activeNetInfo.getType() == ConnectivityManager.TYPE_WIFI){
+//                connectType = 1;
+//            }
+//            if (activeNetInfo.getType() == ConnectivityManager.TYPE_MOBILE){
+//                connectType = 2;
+//            }
+//        }
+//        return connectType;
+//    }
 
     /***
      * 计算两个时间差，返回的是的秒s

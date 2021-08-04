@@ -97,6 +97,7 @@ public class HttpLib {
         LinkedHashMap<String, Object> maperrinfo = new LinkedHashMap<>();
         maperrinfo.put("code","0000000");
         maperrinfo.put("msg","Unable to connect to server");
+        maperrinfo.put("errinfo",err);
         maperr.put("error",maperrinfo);
         JSONObject json2 =new JSONObject(maperr);
         return json2.toString();
@@ -140,7 +141,7 @@ public class HttpLib {
             connection.setRequestMethod("GET");
 
             InputStream inStream = connection.getInputStream();// 通过输入流获取html数据
-            byte[] data = readInputStream(inStream);// 得到html的二进制数据
+            byte[] data = readInputStream(inStream);   // 得到html的二进制数据
 
             DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(savePath));//把byte写入文件
             dataOutputStream.write(data);
@@ -264,11 +265,17 @@ public class HttpLib {
         final String token      = Objects.requireNonNull(mapTypes.get("token")).toString();
         final int funcode       = Integer.parseInt(Objects.requireNonNull(mapTypes.get("funcode")).toString());
         final String postData   = Objects.requireNonNull(mapTypes.get("data")).toString();
+        final String fileName;
+        if (mapTypes.containsKey("fileName")){
+            fileName = Objects.requireNonNull(mapTypes.get("fileName")).toString();
+        }else {
+            fileName = "";
+        }
 
         new Thread(() -> {
             try {
                 String result = "";
-                Log.i(TAG, "http post,url:"+url );
+                Log.i(TAG, "http post,url:"+url +",token:"+token + ",postData:"+postData);
                 if (token.equals("01")){
                     if (getAccessToken() !=null) {
                         result = postWithHeader(url, postData, getAccessToken());
@@ -281,7 +288,17 @@ public class HttpLib {
                 if (result.contains("!DOCTYPE html")){
                     callback(funcode,connfailed("SYSTEM ERROR"));
                 }else {
-                    callback(funcode,result);
+                    if (funcode !=25) {
+                        callback(funcode, result);
+                    }else {
+                        LinkedHashMap<String, Object> mapInfo = new LinkedHashMap<>();
+                        mapInfo.put("code","0");
+                        mapInfo.put("msg","request ok");
+                        mapInfo.put("filename",fileName);
+
+                        JSONObject jsonMap =new JSONObject(mapInfo);
+                        callback(funcode, jsonMap.toString());
+                    }
                 }
             } catch (IOException e) {
                 callback(funcode,connfailed(e.toString()));
@@ -370,6 +387,12 @@ public class HttpLib {
                 break;
             case 24:    //查询锁的型号
                 httpLibCallback.onGetLockType(resultStr);
+                break;
+            case 25:    //上传日志文件
+                httpLibCallback.onUploadFile(resultStr);
+                break;
+            case 26:
+                httpLibCallback.onDelGwSubLock(resultStr);
                 break;
         }
     }
@@ -640,6 +663,23 @@ public class HttpLib {
     }
 
     /**
+     * update information of the lock
+     */
+    public void delGwSubLock(final JSONObject json){
+        String urlPath = "/api/User/deleteGatewaySubDevice";
+        final String url = serverIP + urlPath;
+
+        LinkedHashMap<String, Object> cmdMap = new LinkedHashMap<>();
+        cmdMap.put("url",url);
+        cmdMap.put("token","01");
+        cmdMap.put("funcode","26");
+        cmdMap.put("data",json);
+
+        String cmdString = new JSONObject(cmdMap).toString();
+        toSendDataWithThread(cmdString);
+    }
+
+    /**
      * Update the information of the login user
      */
     public void updateLoginUserInfo(String nickname, String age, String gender, String address, String shake_unlock, String vibration){
@@ -680,6 +720,40 @@ public class HttpLib {
         cmdMap.put("token","01");
         cmdMap.put("funcode","14");
         cmdMap.put("data",base64Img);
+
+        String cmdString = new JSONObject(cmdMap).toString();
+        toSendDataWithThread(cmdString);
+    }
+
+    //upload log file
+    public void updateLogFile(final String filePath){
+
+        File dir = new File(filePath);
+        if (!dir.exists()) {
+            Log.d(TAG, "File not found :"+ filePath);
+
+            LinkedHashMap<String, Object> maperr = new LinkedHashMap<>();
+            LinkedHashMap<String, Object> maperrinfo = new LinkedHashMap<>();
+            maperrinfo.put("code","0000000");
+            maperrinfo.put("msg","File not found");
+            maperr.put("error",maperrinfo);
+            JSONObject json2 =new JSONObject(maperr);
+            callback(25,json2.toJSONString());
+
+            return;
+        }
+
+        File file = new File(filePath);
+        String base64Img = fileToBase64(file);
+        String urlPath = "/api/User/appLog";
+        final String url = serverIP + urlPath;
+
+        LinkedHashMap<String, Object> cmdMap = new LinkedHashMap<>();
+        cmdMap.put("url",url);
+        cmdMap.put("token","01");
+        cmdMap.put("funcode","25");
+        cmdMap.put("data",base64Img);
+        cmdMap.put("fileName",file.getName());
 
         String cmdString = new JSONObject(cmdMap).toString();
         toSendDataWithThread(cmdString);
@@ -835,6 +909,35 @@ public class HttpLib {
             }
         }
         return result;
+    }
+
+
+    /**
+     * 文件转base64字符串
+     *
+     * @param file filename
+     * @return String
+     */
+    public static String fileToBase64(File file) {
+        String base64 = null;
+        InputStream in = null;
+        try {
+            in = new FileInputStream(file);
+            byte[] bytes = new byte[in.available()];
+            int length = in.read(bytes);
+            base64 = Base64.encodeToString(bytes, 0, length, Base64.DEFAULT);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (in != null) {
+                    in.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return base64;
     }
 
     /**
