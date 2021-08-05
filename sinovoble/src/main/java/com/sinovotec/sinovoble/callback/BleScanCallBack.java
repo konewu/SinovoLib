@@ -81,7 +81,7 @@ public class BleScanCallBack extends ScanCallback {
                                             Log.w(TAG,"lockmac:"+ mac + ",ble mac:"+ bleScanDevice.GetDevice().getAddress());
                                             if (bleScanDevice.GetDevice().getAddress().equals(mac)){
 
-                                                Log.w(TAG, "开始连接之前，先停止扫描,2S后在连接");
+                                                Log.w(TAG, "[Ble connect] 开始连接之前，先停止扫描");
                                                 SinovoBle.getInstance().setFoundlock(true);
                                                 SinovoBle.getInstance().setScanAgain(false);
                                                 BleScanCallBack.getInstance(iScanCallBack).stopScan();
@@ -90,11 +90,8 @@ public class BleScanCallBack extends ScanCallback {
                                                 SinovoBle.getInstance().getToConnectLockList().clear();
                                                 SinovoBle.getInstance().getToConnectLockList().add(bleConnectLock);
 
-                                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                                    Log.w(TAG, "开始进行自动连接xx:"+ bleScanDevice.GetDevice().getAddress());
-                                                    SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
-                                                }, 1000);
-
+                                                Log.w(TAG, "[Ble connect] 开始进行自动连接xx:"+ bleScanDevice.GetDevice().getAddress());
+                                                SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
                                                 break;
                                             }
                                         }
@@ -227,7 +224,7 @@ public class BleScanCallBack extends ScanCallback {
                     BleConnectLock myConnectLock = SinovoBle.getInstance().getToConnectLockList().get(i);
                     Log.d(TAG, "自动连接连接中锁的mac：" + myConnectLock.getLockMac());
                     if (myConnectLock.getLockMac().equals(scanLockMac)){
-                        Log.d(TAG,"该设备是需要自动连接的设备："+ scanLockMac);
+                        Log.d(TAG,"[Ble connect]该设备是需要自动连接的设备："+ scanLockMac);
                         deviceIn = true;
                         break;
                     }

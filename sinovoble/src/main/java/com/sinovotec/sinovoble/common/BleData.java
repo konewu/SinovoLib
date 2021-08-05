@@ -89,7 +89,7 @@ public class BleData {
             String funcodelist = getCommandList().getFirst();
             funcodelist = funcodelist.substring(2,4);
 
-            Log.d(TAG, "锁端返回数据的功能码："+funcodebt + ",命令队列中第一个命令的功能码："+funcodelist);
+           // Log.d(TAG, "锁端返回数据的功能码："+funcodebt + ",命令队列中第一个命令的功能码："+funcodelist);
 
             //需要注意，如果是同步数据或是日志，必须同步完成才能执行下一个命令，否则容易导致失败连接断开
             if (funcodebt.equals("13") || funcodebt.equals("17")){
@@ -270,7 +270,7 @@ public class BleData {
         //如果当前没有正在执行命令
         if (!isExeCmding()){
             if (SinovoBle.getInstance().isBleConnected() || SinovoBle.getInstance().isBindMode()) {
-                Log.d(TAG, "连接成功，且状态为非正在发送命令的状态，可以发送命令");
+                Log.d(TAG, "[Ble connect] it's connected, now to send command");
                 sendDataToBle();
             }else {
                 Log.d(TAG, "采用wifi连接，通过mqtt 发送命令");

@@ -21,7 +21,6 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 
@@ -346,17 +345,6 @@ public class MqttLib {
         }
     }
 
-    //通知网关 断开与锁的蓝牙连接
-    public void disconnectLock(String gatewayid, ArrayList<String> macList){
-        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-        map.put("gateway_id", gatewayid);
-        map.put("type", "disconnectLock");
-        map.put("mac", macList);   //mac地址要大写
-        JSONObject json = new JSONObject(map);
-        Log.d(TAG, "Disconnect the Bluetooth connection between the gateway and the lock: "+ json.toString());
-        publishMessage(json.toString());
-    }
-
     /**
      * 通过mqtt 发送命令
      * @param gatewayid 网关id
@@ -365,13 +353,11 @@ public class MqttLib {
      * @param mac   锁的mac地址
      * @param data  发送的数据
      */
-    private void getDataToSend(final String gatewayid, final String type, final String uuid,final String pm,
-                              final String mac, final String data){
+    private void getDataToSend(final String gatewayid, final String type, final String uuid, final String mac, final String data){
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         map.put("gateway_id", gatewayid);
         map.put("type", type);
         map.put("uuid", uuid);
-        map.put("pm",pm);
         map.put("mac", mac.toUpperCase());      //mac地址要大写
         map.put("data", data);
         JSONObject json = new JSONObject(map);
@@ -456,14 +442,14 @@ public class MqttLib {
      * 创建用户,默认创建的是普通用户
      * @param userName string
      */
-    public void addUser(String gatewayid, String type, String uuid, String pm, String mac, String sno, String userName){
+    public void addUser(String gatewayid, String type, String uuid, String mac, String sno, String userName){
         if (userName.isEmpty() || userName.length()>10){
             return;
         }
 
         String data = sno + ComTool.stringToAscii(userName);
         String datasend = mqttCommand("02", data,mac);
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
     /**
@@ -471,7 +457,7 @@ public class MqttLib {
      * @param userName 用户名
      * @param userNID   用户的nid
      */
-    public void updateUserName(String gatewayid, String type, String uuid, String pm, String mac, String sno, String userName, String userNID){
+    public void updateUserName(String gatewayid, String type, String uuid, String mac, String sno, String userName, String userNID){
         if (userNID.isEmpty() || userName.length()>10 ){
             Log.e(TAG,"Parameter error");
             return;
@@ -485,7 +471,7 @@ public class MqttLib {
         String updateStr = sno +userNID + username;
         String datasend = mqttCommand("03", updateStr, mac);
       //  Log.d(TAG,"调用 addUser 来添加用户:"+ datasend);
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
 
     }
 
@@ -495,7 +481,7 @@ public class MqttLib {
      * @param dataType      数据类型， 02 普通密码，03超级用户密码，06是卡，07是指纹，08是防胁迫指纹
      * @param password      添加密码时具体的密码内容， 如果是添加卡/指纹时，留空即可
      */
-    public void addDataForUser(String gatewayid, String type, String uuid, String pm, String mac, String sno, String userNID, String dataType, String password){
+    public void addDataForUser(String gatewayid, String type, String uuid, String mac, String sno, String userNID, String dataType, String password){
         if (userNID.isEmpty() || dataType.isEmpty()){
             Log.e(TAG,"Parameter error");
             return;
@@ -519,7 +505,7 @@ public class MqttLib {
             datasend = mqttCommand("05", data, mac);
         }
 
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
     /**
@@ -527,7 +513,7 @@ public class MqttLib {
      * @param dataType s
      * @param delID s
      */
-    public void delData(String gatewayid, String type, String uuid, String pm, String mac, String sno, String dataType, String delID){
+    public void delData(String gatewayid, String type, String uuid, String mac, String sno, String dataType, String delID){
         if (delID.isEmpty() || dataType.isEmpty()){
             Log.e(TAG,"Parameter error");
             return;
@@ -543,7 +529,7 @@ public class MqttLib {
             String data = sno + delID ;
             datasend = mqttCommand("1b", data, mac);
         }
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
 
     }
 
@@ -554,7 +540,7 @@ public class MqttLib {
      * @param codeID   密码的ID
      * @param newCode  新的密码
      */
-    public void resetCode(String gatewayid, String type, String uuid, String pm, String mac, String sno,
+    public void resetCode(String gatewayid, String type, String uuid, String mac, String sno,
                           String userNid, String codeType, String codeID, String newCode){
         if (userNid.isEmpty() || codeType.isEmpty() || codeID.isEmpty() || newCode.isEmpty()){
             Log.e(TAG,"Parameter error");
@@ -562,7 +548,7 @@ public class MqttLib {
         }
         String data = sno + userNid + codeType + codeID + newCode;
         String datasend = mqttCommand("0d", data, mac);
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
     /**
@@ -581,7 +567,7 @@ public class MqttLib {
      *
      * @param data  value
      */
-    public void setLock(String gatewayid, String type, String uuid, String pm, String mac, String sno, String dataType, String data){
+    public void setLock(String gatewayid, String type, String uuid, String mac, String sno, String dataType, String data){
 
         String datasend = "";
         //设置锁的名称
@@ -646,7 +632,7 @@ public class MqttLib {
             String setData = sno + data;
             datasend = mqttCommand("23", setData, mac);
         }
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
 
@@ -665,7 +651,7 @@ public class MqttLib {
      *                 10 get the superUser's priority
      *                 11 get the basetime of the lock
      */
-    public void getLockInfo(String gatewayid, String type, String uuid, String pm, String mac, String sno, String dataType){
+    public void getLockInfo(String gatewayid, String type, String uuid, String mac, String sno, String dataType){
         String datasend = "";
 
         if (dataType.equals("01")){ datasend = mqttCommand("12", sno, mac); }
@@ -682,28 +668,28 @@ public class MqttLib {
         if (dataType.equals("10")){ datasend = mqttCommand("23", sno, mac); }
         if (dataType.equals("11")){ datasend = mqttCommand("1f", sno, mac); }
 
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
     /**
      * 同步数据，包括用户信息
      */
-    public void getAllUsers(String gatewayid, String type, String uuid, String pm, String mac, String sno){
+    public void getAllUsers(String gatewayid, String type, String uuid, String mac, String sno){
         String data = sno +"00";
         String  datasend = mqttCommand("13", data, mac);
-        getDataToSend(gatewayid, type, uuid, pm, mac, datasend);
+        getDataToSend(gatewayid, type, uuid, mac, datasend);
     }
 
     /**
      * 同步日志
      * @param logID  ，表示当前的日志id ,日志量比较大，所以支持从指定的id开始同步，如果 id为 ff ，则同步所有的日志
      */
-    public void getLog(String gatewayid, String type, String uuid, String pm, String mac, String sno, String logID){
+    public void getLog(String gatewayid, String type, String uuid, String mac, String sno, String logID){
 
         String data = sno + logID;
         String datasend = mqttCommand("17", data, mac);
 
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
     /**
@@ -711,7 +697,7 @@ public class MqttLib {
      * @param dynamicCode  对应的 动态密码
      * @param enable  00 表示禁用， 01 表示启动
      */
-    public void doDynamicCode(String gatewayid, String type, String uuid, String pm, String mac, String sno, String dynamicCode, String enable){
+    public void doDynamicCode(String gatewayid, String type, String uuid, String mac, String sno, String dynamicCode, String enable){
         if (dynamicCode.isEmpty() ||!(enable.equals("00") || enable.equals("01"))){
             Log.e(TAG,"Parameter error");
             return;
@@ -720,7 +706,7 @@ public class MqttLib {
         String data = sno + enable + dynamicCode;
         String datasend = mqttCommand("20", data, mac);
 
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
 
@@ -730,7 +716,7 @@ public class MqttLib {
      * @param codeID       密码的id
      * @param newCodeType  新的密码类型 ，02 普通密码，03 超级用户密码; 该字段为空，则表示查询此密码的类型
      */
-    public void updateCodeType(String gatewayid, String type, String uuid, String pm, String mac, String sno,
+    public void updateCodeType(String gatewayid, String type, String uuid, String mac, String sno,
                                String oldCodeType,String codeID, String newCodeType){
         if (oldCodeType.isEmpty() || codeID.isEmpty()){
             Log.e(TAG,"Parameter error");
@@ -752,7 +738,7 @@ public class MqttLib {
             data = sno + oldCodeType + codeID + "02";
         }
         String datasend = mqttCommand("07", data, mac);
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
 
     }
 
@@ -760,7 +746,7 @@ public class MqttLib {
      * 校验密码
      * @param password 密码
      */
-    public void verifyCode(String gatewayid, String type, String uuid, String pm, String mac, String sno, String password){
+    public void verifyCode(String gatewayid, String type, String uuid, String mac, String sno, String password){
         if (password.isEmpty()){
             Log.e(TAG,"Parameter error");
             return;
@@ -769,23 +755,23 @@ public class MqttLib {
         String data = sno+ password;
         String datasend = mqttCommand("08", data, mac);
 
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
     /**
      * 通知锁端断开蓝牙连接
      */
-    public void toDisconnBle(String gatewayid, String type, String uuid, String pm, String mac, String sno){
+    public void toDisconnBle(String gatewayid, String type, String uuid, String mac, String sno){
       //  Log.d(TAG,"调用 toDisconnBle 来断开蓝牙连接");
         String datasend = mqttCommand("1e", sno, mac);
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
     /**
      * 开关门操作
      * @param unlockType 00 表示锁门，01表示开门
      */
-    public void toUnlock(String gatewayid, String type, String uuid, String pm, String mac, String sno, String unlockType, String code){
+    public void toUnlock(String gatewayid, String type, String uuid, String mac, String sno, String unlockType, String code){
         if (unlockType.isEmpty() || code.isEmpty() || !(unlockType.equals("00") || unlockType.equals("01"))){
             Log.e(TAG,"Parameter error");
             return;
@@ -793,7 +779,7 @@ public class MqttLib {
         String data = sno + unlockType + code;
         String datasend = mqttCommand("0a", data, mac);
 
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
     /**
@@ -803,7 +789,7 @@ public class MqttLib {
      *                  0e 表示清空所有的绑定手机
      *                  0c 表示恢复出厂设置
      */
-    public void cleanData(String gatewayid, String type, String uuid, String pm, String mac, String sno, String datakType){
+    public void cleanData(String gatewayid, String type, String uuid, String mac, String sno, String datakType){
         if (datakType.isEmpty()){
             Log.e(TAG,"Parameter error");
             return;
@@ -819,7 +805,7 @@ public class MqttLib {
             datasend = mqttCommand("0c", data, mac);
         }
 
-        getDataToSend(gatewayid, type, uuid, pm, mac,datasend);
+        getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
     public String mqttCommand(String funcode, String data,String mac){

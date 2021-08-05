@@ -235,7 +235,7 @@ public class TcpSocket {
                                                     sendFaild(cmd);
                                                     break;
                                                 } else {
-                                                   // Thread.sleep(200);
+                                                    Thread.sleep(200);
                                                     writer.write(cmd.getBytes());
                                                     writer.flush();
                                                     tcpSendHander.postDelayed(() -> checkDataReceive(cmd), timeOut);

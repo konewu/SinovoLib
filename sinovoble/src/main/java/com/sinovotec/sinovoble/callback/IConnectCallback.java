@@ -10,7 +10,7 @@ public interface IConnectCallback {
     //连接失败
     void onConnectFailure(String macAddress);
 
-    //连接断开
+    //连接断开, 会自动重试
     void onBleDisconnect(String macaddress);
 
     //添加锁

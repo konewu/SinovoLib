@@ -1234,11 +1234,8 @@ public class SinovoBle {
         }
 
         if (SinovoBle.getInstance().isConnectting()){
-            String nowtime = ComTool.getNowTime();
-            if (getConnectTime()!=null && ComTool.calTimeDiff(getConnectTime(), nowtime) <20) {
-                Log.e(TAG, "It's connecting. Ignore this connection request");
-                return;
-            }
+            Log.e(TAG, "It's connecting. Ignore this connection request");
+            return;
         }
 
         setConnectTime(ComTool.getNowTime());
@@ -1260,7 +1257,7 @@ public class SinovoBle {
             }
         });
 
-        Log.d(TAG, "connectGatt to：" + bluetoothDevice.getAddress());
+        Log.d(TAG, "[Ble connect] connectGatt to：" + bluetoothDevice.getAddress());
     }
 
     //进行 dfu 升级, dfu 升级的mac地址与正常通信的不一样，需要加+1
@@ -1321,7 +1318,6 @@ public class SinovoBle {
     public void disconnBle(){
         SinovoBle.getInstance().getToConnectLockList().clear();
         SinovoBle.getInstance().setScanAgain(false);
-
         BleConnCallBack.getInstance().disConectBle();
     }
 }
