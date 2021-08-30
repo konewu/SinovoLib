@@ -53,7 +53,7 @@ public class HomeFragment extends Fragment {
 
             String qrcode = qrcode_et.getText().toString();
             showProgressDialog("Connecting....");
-            SinovoBle.getInstance().connectLockViaQRCode(qrcode);
+            SinovoBle.getInstance().connectLockViaQRCode(qrcode, "123456789012");
         });
 
 

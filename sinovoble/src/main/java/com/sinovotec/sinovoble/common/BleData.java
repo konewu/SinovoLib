@@ -240,6 +240,10 @@ public class BleData {
 
         //查询锁是否被冻结，锁死了（连续5次开门失败）
         if (funCode.equals("2b")) {return lockIsFrozen(datavalue);}
+
+        //查询锁的基本信息,包括 电量、门锁状态、自动锁门时间、音量大小、用户权限、固件版本
+        if (funCode.equals("2c")) {return getLockBaseInfo(datavalue);}
+
         return map;
     }
 
@@ -250,7 +254,6 @@ public class BleData {
     public void exeCommand(String funcode, String data, boolean toTop){
         String lockmac = SinovoBle.getInstance().getLockMAC().replace(":","");
         String data_result = SinovoBle.getInstance().getMyJniLib().encryptAes(funcode, data.toLowerCase(), lockmac);
-
         //先判断 此命令是否已经存在队列中，如果已经存在，则不再加入
         if (!commandList.contains(data_result)){
             //命令需要查到队首
@@ -298,11 +301,15 @@ public class BleData {
         setExeCmding(true);
         final  byte[] write_msg_byte = toByte(getCommandList().getFirst());
         if (SinovoBle.getInstance().getBleServiceUUID() != null && SinovoBle.getInstance().getBlecharacteristUUID() != null ){
-            final UUID uuid_service = UUID.fromString(SinovoBle.getInstance().getBleServiceUUID());
-            final UUID uuid_characterics = UUID.fromString(SinovoBle.getInstance().getBlecharacteristUUID());
-
-            new Handler(Looper.getMainLooper()).postDelayed(() -> BleConnCallBack.getInstance().writeCharacteristic(write_msg_byte, uuid_service, uuid_characterics), 200);
-
+            new Handler(Looper.getMainLooper()).postDelayed(() ->{
+                        UUID uuid_service = UUID.fromString(SinovoBle.getInstance().getBleServiceUUID());
+                        UUID uuid_characterics = UUID.fromString(SinovoBle.getInstance().getBlecharacteristUUID());
+                        if (SinovoBle.getInstance().isGWConfigMode()){
+                            uuid_characterics = UUID.fromString(BleConstant.WRITE_CHARAC_UUID_GW);
+                        }
+                        BleConnCallBack.getInstance().writeCharacteristic(write_msg_byte, uuid_service, uuid_characterics);
+                    }, 200);
+//                    BleConnCallBack.getInstance().writeCharacteristic(write_msg_byte, uuid_service, uuid_characterics), 200);
         }else {
             Log.d(TAG,"UUID 为空，异常了,断开连接");
             BleConnCallBack.getInstance().disConectBle();
@@ -694,11 +701,9 @@ public class BleData {
         map.put("errCode", errCode);
         map.put("lockMac", SinovoBle.getInstance().getLockMAC());
 
-        if (errCode.equals("00")) {
+        if (errCode.equals("00") || errCode.equals("0b") ) {
             String optype = datavalue.substring(0, 2);
-          //  String codetype = datavalue.substring(2, 4);
             map.put("opType", optype);
-          //  map.put("codeType", codetype);
         }
         return map;
     }
@@ -1334,7 +1339,6 @@ public class BleData {
         return map;
     }
 
-
     /**
      * 查询锁是否被锁死，冻结了，连续5次开门失败，则冻结锁3分钟
      */
@@ -1359,6 +1363,60 @@ public class BleData {
         if (errCode.equals("00")) {
             String enable = datavalue.substring(0, 2);
             map.put("enable", enable);
+        }
+
+        return map;
+    }
+
+    /**
+     * 查询锁的基本信息
+     * //        1、power 表示电量；十六进制表示
+     * //        2、status 锁当前状态， 0x00:已锁门、0x01:已开门、0x02:正在忙、0x03:为锁死状态
+     * //        3、autolock  自动锁门时间
+     * //        4、volume  音量大小， 0x00 表示静音， 0x01~0x05分别表示音量大小
+     * //        5、autocreate  绑定成功后 自动生成密码的设置， 0x00关闭、0x01表示已开启
+     * //        6、spuer 	超级用户的权限值
+     * //        7、v1 v2 YY MM DD 表示是固件版本号，其中v1为大版本号，v2为小版本号，YY表示年、MM表示月，DD表示天
+     *           8、HW_TYPE  表示锁的 固件型号
+     */
+    private LinkedHashMap<String, Object> getLockBaseInfo(String datavalue){
+        int len = datavalue.length();
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        map.put("funCode", "2c");
+
+        Log.d(TAG, "返回的内容："+ datavalue);
+
+        String errCode = "00";
+        if (len > 2){ errCode = datavalue.substring(len-2, len); }
+
+        map.put("errCode", errCode);
+        map.put("lockMac", SinovoBle.getInstance().getLockMAC());
+
+        if (errCode.equals("00") && datavalue.length() > 23) {
+            String power        = datavalue.substring(0, 2);
+            String status       = datavalue.substring(2, 4);
+            String autolock     = datavalue.substring(4, 6);
+            String volume       = datavalue.substring(6, 8);
+            String autocreate   = datavalue.substring(8, 10);
+            String spuer        = datavalue.substring(10, 12);
+            String version1     = datavalue.substring(12, 14);
+            String version2     = datavalue.substring(14, 16);
+            String verTime      = datavalue.substring(16, 22);
+            String hwType_num   = datavalue.substring(22, 24);
+
+            int power_int = Integer.parseInt(power, 16);
+            int autolocktime = Integer.parseInt(autolock, 16);
+
+            map.put("power", power_int);
+            map.put("lockStatus", status);
+            map.put("autoLockTime", autolocktime);
+            map.put("volume", volume);
+            map.put("autocreate", autocreate);
+            map.put("superUserLevel", spuer);
+            map.put("fwVersion1", version1);
+            map.put("fwVersion2", version2);
+            map.put("fwVerTime", verTime);
+            map.put("fwType", hwType_num);
         }
 
         return map;

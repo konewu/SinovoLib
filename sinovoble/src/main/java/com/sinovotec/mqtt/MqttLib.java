@@ -43,10 +43,7 @@ public class MqttLib {
     private final Handler mqttSendHandler = new Handler(Looper.getMainLooper());        //超时句柄， app发送命令到网关上的超时，默认为 10s
     private final Handler bleSendHandler  = new Handler(Looper.getMainLooper());        //超时句柄， app发送命令经过网关到锁上的超时，默认为 20s
 
-    private int tcpSendFaild = 0;           //一分钟内 连续3次使用 tcp socket发送失败，则在这一分钟内 不再尝试用 tcp socket的方式
-    private long  tcpSendFaildInter = 0;
     private int  connectType = 0;           //0 未知，1为 wifi， 2为 手机数据
-//    private String wifiSSID = "";           //获取当前手机的wifi ssid
 
     public static MqttLib getInstance() {
         if (instance == null) {
@@ -85,9 +82,6 @@ public class MqttLib {
         String clientId = "";
         String userName = "";
         String passWord = "";
-
-//        setConnectType(ComTool.getNetType(context));
-//        setWifiSSID(ComTool.getWifiName(context));
 
         /* 获取Mqtt建连信息clientId, username, password */
         AiotMqttOption aiotMqttOption = new AiotMqttOption().getMqttOption(proKey, deName, deSecret);
@@ -208,7 +202,9 @@ public class MqttLib {
                     Log.i(TAG, "subscribed succeed");
                     setMqttOK(true);
                     mqttSubscribeHandler.removeCallbacksAndMessages(null);    //取消定时任务
-                    iotMqttCallback.onSubscribeSuccess();
+                    if (iotMqttCallback != null) {
+                        iotMqttCallback.onSubscribeSuccess();
+                    }
                 }
 
                 @Override
@@ -216,7 +212,9 @@ public class MqttLib {
                     Log.i(TAG, "subscribed failed");
                     setMqttOK(false);
                     mqttSubscribeHandler.removeCallbacksAndMessages(null);    //取消定时任务
-                    iotMqttCallback.onSubscribeFailed();
+                    if (iotMqttCallback != null) {
+                        iotMqttCallback.onSubscribeFailed();
+                    }
                 }
             });
 
@@ -247,7 +245,10 @@ public class MqttLib {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
                     Log.i(TAG, "publish succeed!，data："+ payload);
-                    iotMqttCallback.onPublishSuccess();
+
+                    if (iotMqttCallback != null) {
+                        iotMqttCallback.onPublishSuccess();
+                    }
 
                     //延迟30秒后再检测 是否已经收到锁端的恢复
                     if (payload.contains("send2lock")){
@@ -261,7 +262,9 @@ public class MqttLib {
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     Log.i(TAG, "publish failed! ");
-                    iotMqttCallback.onPublishFailed();
+                    if (iotMqttCallback != null) {
+                        iotMqttCallback.onPublishFailed();
+                    }
                 }
             });
         } catch (MqttException e) {
@@ -362,36 +365,14 @@ public class MqttLib {
         map.put("data", data);
         JSONObject json = new JSONObject(map);
 
-        //增加此机制，连续3次tcp 发送失败，则1分钟内不会再 使用 tcp发送，直接用 mqtt 发送
-//        long timecurrentTimeMillis = System.currentTimeMillis();
-//        long diff = timecurrentTimeMillis - getTcpSendFaildInter();
-//
-//        boolean sendByMqtt = true;
-
-//        Log.w(TAG, "连接类型："+ getConnectType() + ",ssid:"+ getWifiSSID() + ",gwssid:"+ gwWifiSSID + ",gwip:"+gwIP + ",diff:"+ diff + ",tcp:"+ tcpSendFaild);
-//        if (getConnectType() == 1 && getWifiSSID().equals(gwWifiSSID) && !gwIP.isEmpty()){
-//            if (tcpSendFaild >3 ){
-//                if (diff > 60){
-//                    sendByMqtt = false;
-//                }
-//            }else {
-//                sendByMqtt = false;
-//            }
-//        }
-
-        //先关闭 tcp socket 发包的功能，待网关bug解决后再开启， 20210330
-//        sendByMqtt = true;
-
         if (isMqttOK){
-//            if (sendByMqtt) {    //去掉tcp
-                Log.d(TAG, "send command via mqtt:" + json.toString());
-                publishMessage(json.toString());
-//            }else {
-//                Log.d(TAG, "send command via TCP:" + json.toString());
-//                TcpSocket.getInstance(iotMqttCallback).sendData(gwIP, 8080, json.toString());
-//            }
+            Log.d(TAG, "send command via mqtt:" + json.toString());
+            publishMessage(json.toString());
         }else{
             Log.d(TAG, "MQTT is not ready, it cann't send command:" + json.toString());
+            if (iotMqttCallback != null) {
+                iotMqttCallback.onPublishFailed();
+            }
         }
     }
 
@@ -405,6 +386,9 @@ public class MqttLib {
             publishMessage(jsonData);
         }else{
             Log.d(TAG, "MQTT is not ready, it cann't send command:" + jsonData);
+            if (iotMqttCallback != null) {
+                iotMqttCallback.onPublishFailed();
+            }
         }
     }
 
@@ -418,23 +402,32 @@ public class MqttLib {
             publishMessage(jsonData);
         }else{
             Log.d(TAG, "MQTT is not ready, it cann't send command:" + jsonData);
+            if (iotMqttCallback != null) {
+                iotMqttCallback.onPublishFailed();
+            }
         }
     }
 
     private void checkDataReceive(String dataType){
         if (dataType.equals("send2lock")){
             Log.d(TAG,"The command sent to lock via mqtt has timed out, 12s");
-            iotMqttCallback.onReceiveBLETimeout();
+            if (iotMqttCallback != null) {
+                iotMqttCallback.onReceiveBLETimeout();
+            }
         }
 
         if (dataType.equals("send2GW")){
             Log.d(TAG,"The command sent to gateway via mqtt has timed out, 10s");
-            iotMqttCallback.onReceiveMQTTTimeout();
+            if (iotMqttCallback != null) {
+                iotMqttCallback.onReceiveMQTTTimeout();
+            }
         }
 
         if (dataType.equals("subscribeTopic") && !isMqttOK()){
             Log.d(TAG,"subscribeTopic timed out, 5s");
-            iotMqttCallback.onSubscribeFailed();
+            if (iotMqttCallback != null) {
+                iotMqttCallback.onSubscribeFailed();
+            }
         }
     }
 
@@ -620,10 +613,10 @@ public class MqttLib {
                     sixteen = "0"+sixteen;
                 }
                 String setData = sno + sixteen;
-                BleData.getInstance().exeCommand("1c", setData, false);
+                datasend = mqttCommand("1c", setData, mac);
             }else {
                 String setData = sno + data;
-                BleData.getInstance().exeCommand("09", setData, false);
+                datasend = mqttCommand("09", setData, mac);
             }
         }
 
@@ -667,6 +660,7 @@ public class MqttLib {
         if (dataType.equals("09")){ datasend = mqttCommand("09", sno, mac); }
         if (dataType.equals("10")){ datasend = mqttCommand("23", sno, mac); }
         if (dataType.equals("11")){ datasend = mqttCommand("1f", sno, mac); }
+        if (dataType.equals("12")){ datasend = mqttCommand("2c", sno, mac); }
 
         getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
@@ -820,35 +814,7 @@ public class MqttLib {
         mqttSendHandler.removeCallbacksAndMessages(null);    //取消定时任务
     }
 
-    public void setTcpSendFaild(int tcpSendFaild) {
-        this.tcpSendFaild = tcpSendFaild;
-    }
-
-    public int getTcpSendFaild() {
-        return tcpSendFaild;
-    }
-
-//    public long getTcpSendFaildInter() {
-//        return tcpSendFaildInter;
-//    }
-
-    public void setTcpSendFaildInter(long tcpSendFaildInter) {
-        this.tcpSendFaildInter = tcpSendFaildInter;
-    }
-
-//    public int getConnectType() {
-//        return connectType;
-//    }
-
     public void setConnectType(int connectType) {
         this.connectType = connectType;
     }
-
-//    public String getWifiSSID() {
-//        return wifiSSID;
-//    }
-
-//    public void setWifiSSID(String wifiSSID) {
-//        this.wifiSSID = wifiSSID;
-//    }
 }

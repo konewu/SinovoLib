@@ -40,6 +40,16 @@ public class BleCallBack {
         public void onScanTimeout(String scanResult) {
 
         }
+
+        @Override
+        public void onNotFoundBles20s() {
+
+        }
+
+        @Override
+        public void onNotFoundLock40s() {
+
+        }
     };
 
     //BLE connect callback
@@ -53,9 +63,9 @@ public class BleCallBack {
         }
 
         @Override
-        public void onConnectFailure() {
-            Log.e(TAG,"BLE disconnect");
-            callHandler(1,"BLE disconnected");
+        public void onConnectFailure(String macAddress) {
+            Log.e(TAG,"BLE connect failed");
+            callHandler(1,"BLE connect failed");
             callHandler(2,"");
         }
 

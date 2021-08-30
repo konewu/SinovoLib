@@ -1,5 +1,7 @@
 package com.sinovotec.sinovoble.common;
 
+import java.util.UUID;
+
 /**
  * @Description: BLE常量
  */
@@ -13,4 +15,10 @@ public class BleConstant {
     public static final String SERVICE_UUID_DFU            = "0000fe59-0000-1000-8000-00805f9b34fb";        //dfu uuid
     public static final String CHARACTERISTIC_DFU1         = "8ec90002-f315-4f60-9fb8-838830daea50";        //dfu uuid
     public static final String CHARACTERISTIC_DFU2         = "8ec90001-f315-4f60-9fb8-838830daea50";        //dfu uuid
+
+    //网关配网
+    public static final String SERVICE_UUID_GW            = "0000ffff-0000-1000-8000-00805f9b34fb";
+    public static final String WRITE_CHARAC_UUID_GW       = "0000ff01-0000-1000-8000-00805f9b34fb";
+    public static final String NOTI_CHARAC_UUID_GW        = "0000ff02-0000-1000-8000-00805f9b34fb";
+    public static final String NOTI_DESCRIPTOR_UUID_GW    = "00002902-0000-1000-8000-00805f9b34fb";
 }

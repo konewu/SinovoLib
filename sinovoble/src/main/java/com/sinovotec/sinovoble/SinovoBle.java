@@ -3,6 +3,9 @@ package com.sinovotec.sinovoble;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanSettings;
@@ -10,6 +13,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
@@ -18,6 +22,7 @@ import android.os.ParcelUuid;
 import android.util.Log;
 
 import com.alibaba.fastjson.JSONObject;
+import com.sinovotec.gwSmartConfig.GWSmartConfigCallback;
 import com.sinovotec.sinovoble.callback.BleConnCallBack;
 import com.sinovotec.sinovoble.callback.BleScanCallBack;
 import com.sinovotec.sinovoble.callback.IConnectCallback;
@@ -31,13 +36,21 @@ import com.sinovotec.sinovoble.common.ComTool;
 import com.sinovotec.encryptlib.LoadLibJni;
 import com.sinovotec.sinovoble.common.DfuUtils;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
+import blufi.espressif.BlufiCallback;
+import blufi.espressif.BlufiClient;
+import blufi.espressif.response.BlufiStatusResponse;
 import no.nordicsemi.android.dfu.DfuProgressListener;
+
+import static android.content.Context.WIFI_SERVICE;
 
 public class SinovoBle {
     private final String TAG    = "SinovoBle";
@@ -61,7 +74,9 @@ public class SinovoBle {
     private boolean restartBLE  = false;          //是否重启了手机蓝牙，如果是重启的，则本次蓝牙关闭不通知 前端
     private boolean isConnectting   = false;      //是否正在连接
     private String connectTime      = "";         //记录下连接的时间
-    private String connectingMac    = "";         //当前正在连接的设备mac地址
+
+    private boolean isGWConfigMode  = false;       //网关配网模式
+    private String gwWifiPass       = "";           //记录网关配网时wifi的密码
 
     private Context context;                       //上下文
     private BluetoothAdapter bluetoothAdapter;     //蓝牙适配器
@@ -87,6 +102,13 @@ public class SinovoBle {
     private boolean foundlock = false;              //能够扫描到 我们需要的锁
     private int  scanRound = 0;                     //第几轮扫描，每次扫描 都是分多轮扫描，每一轮扫描5s，停1s
 
+    private WifiManager mWifiManager;
+    private BlufiClient blufiClient;                        //网关配网需要的 实例对象
+    private byte[] wifiInfo;
+    private GWSmartConfigCallback gwConfigCallback;         //网关配网成功之后的回调
+
+    private final ArrayList<BleConnectLock> tmpConnectLockList;         //临时的自动连接的设备列表，网关蓝牙配网时，会断开锁的蓝牙连接，这里先保存下来，配网完成后在连接回去
+
     /**
      * Instantiate  SinovoBle class
      * @return SinovoBle
@@ -106,6 +128,7 @@ public class SinovoBle {
         scanLockList        = new ArrayList<>();
         bondBleMacList      = new ArrayList<>();
         toConnectLockList   = new ArrayList<>();
+        tmpConnectLockList  = new ArrayList<>();
     }
 
     public String getLockQRCode() {
@@ -256,14 +279,6 @@ public class SinovoBle {
         return connectTime;
     }
 
-    public String getConnectingMac() {
-        return connectingMac;
-    }
-
-    public void setConnectingMac(String connectingMac) {
-        this.connectingMac = connectingMac;
-    }
-
     public boolean isScanOnly() {
         return isScanOnly;
     }
@@ -327,6 +342,46 @@ public class SinovoBle {
     public void setRestartBLE(boolean restartBLE) {
         this.restartBLE = restartBLE;
     }
+
+    public boolean isGWConfigMode() {
+        return isGWConfigMode;
+    }
+
+    public String getGwWifiPass() {
+        return gwWifiPass;
+    }
+
+    public void setGWConfigMode(boolean GWConfigMode) {
+        isGWConfigMode = GWConfigMode;
+    }
+
+    public void setGwWifiPass(String gwWifiPass) {
+        this.gwWifiPass = gwWifiPass;
+    }
+
+    public BlufiClient getBlufiClient() {
+        return blufiClient;
+    }
+
+    public byte[] getWifiInfo() {
+        return wifiInfo;
+    }
+
+    public void setWifiInfo(byte[] wifiInfo) {
+        this.wifiInfo = wifiInfo;
+    }
+
+    public void setGwConfigCallback(GWSmartConfigCallback gwConfigCallback) {
+        this.gwConfigCallback = gwConfigCallback;
+    }
+
+    public ArrayList<BleConnectLock> getTmpConnectLockList() {
+        return tmpConnectLockList;
+    }
+
+//    public void setTtmpConnectLockList(ArrayList<BleConnectLock> toConnectLockList) {
+//        this.tmpConnectLockList = toConnectLockList;
+//    }
 
     public LoadLibJni getMyJniLib() {
         if (myJniLib == null){
@@ -462,10 +517,13 @@ public class SinovoBle {
             context.registerReceiver(receiver,makeFilter());
             appFilePath = Objects.requireNonNull(context.getExternalFilesDir("SinovoLib")).getPath();
             BleConnCallBack.getInstance().releaseBle();
+
+            //初始化wifi
+            mWifiManager = (WifiManager) this.context.getSystemService(WIFI_SERVICE);
         }
 
         //先注册进度以及升级状态回调
-        DfuUtils.getInstance().setmDfuProgressListener(context,progressListener);//升级状态回调
+        DfuUtils.getInstance().setmDfuProgressListener(context,progressListener);       //升级状态回调
         return (bluetoothAdapter !=null && mBleScanCallBack !=null && mConnCallBack !=null);
     }
 
@@ -512,7 +570,7 @@ public class SinovoBle {
 
     //绑定超时检测
     private void checkScanResult(){
-        Log.e(TAG,"绑定超时检测，超时为1分钟, isconnecting:" + isConnectting);
+        Log.e(TAG,"绑定超时检测，超时为90s, isconnecting:" + isConnectting);
         if (!isBleConnected() && !isScanOnly()){
             Log.d(TAG,"绑定超时检测，需要告知回调");
             LinkedHashMap<String, Object> map = new LinkedHashMap<>();
@@ -551,7 +609,6 @@ public class SinovoBle {
      * @param userIMEI   lock will bind to the user
      */
     public void connectLockViaQRCode(String qrcode, String userIMEI){
-
         Log.d(TAG, "准备绑定锁的 qrcode："+ qrcode + ", IMEI:"+ userIMEI);
         if (qrcode.length() !=12 || userIMEI.length() != 12 ){
             Log.d(TAG, "qrcode or imei error");
@@ -563,6 +620,7 @@ public class SinovoBle {
         }
         setScanOnly(false);
         setBindMode(true);
+        setGWConfigMode(false);
         setLockQRCode(qrcode);
         setUserIMEI(userIMEI);
         SinovoBle.getInstance().getScanLockList().clear();  //先清空绑定列表
@@ -572,47 +630,122 @@ public class SinovoBle {
         startBleScan();
     }
 
-//    /**
-//     * * connect to lock via mac
-//     * @param macaddress  mac of the lock， such as：C9:E9:CA:94:83:01
-//     */
-//    public void connectLockViaMac(String macaddress){
-//
-//        Log.d(TAG, "准备连接锁，指定的mac地址："+ macaddress);
-//        if (macaddress.length() !=17 ){
-//            Log.d(TAG, "macaddress error");
-//            return;
-//        }
-//
-//        if (SinovoBle.getInstance().getBindTimeoutHandler() != null) {
-//            SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
-//        }
-//        setScanOnly(false);
-//        setBindMode(true);
-//        SinovoBle.getInstance().getScanLockList().clear();  //先清空绑定列表
-//        disconnBle();
-//        setScanAgain(false);
-//        //直接连接，不扫描
-//
-//
-//    }
-
     /**
      * 非绑定模式下，自动连接指定的锁，可以指定多把，蓝牙先扫描到哪一把就连哪一把
      * @param autoConnectList  需要自动连接的锁列表
      */
     public void connectLockViaMacSno(final ArrayList<BleConnectLock> autoConnectList){
         if (mBleScanCallBack == null || mConnCallBack ==null){
-            Log.e(TAG,"ScanCallBack or mConnCallBack is null");
+            Log.e(TAG,"ScanCallBack or mConnCallBack is null，please init ble again");
             //出错了，需要提示客户
             return;
         }
         //保存用户指定的 自动连接锁列表
-        setToConnectLockList(autoConnectList);
+        getToConnectLockList().clear();
+        getToConnectLockList().addAll(autoConnectList);
         setScanOnly(false);
         setBindMode(false);
+        setGWConfigMode(false);
         setScanAgain(true);
         startBleScan();
+    }
+
+    /**
+     * * connect to esp32 网关配网
+     * @param wifiSSID  WIFI SSID
+     * @param wifiPass  WIFI PASS
+     */
+    public void configureGW(GWSmartConfigCallback GWSmartConfigCallback, String wifiSSID, String wifiPass){
+
+        Log.d(TAG, "准备配置网关的网络 wifi ssid："+ wifiSSID + ", wifi pass:"+ wifiPass);
+        if (wifiSSID.isEmpty() || wifiPass.isEmpty() ){
+            Log.d(TAG, "wifi ssid or pass is empty");
+            return;
+        }
+
+        if (SinovoBle.getInstance().getBindTimeoutHandler() != null) {
+            SinovoBle.getInstance().getBindTimeoutHandler().removeCallbacksAndMessages(null);
+        }
+        setScanOnly(false);
+        setBindMode(false);
+        setGWConfigMode(true);
+        SinovoBle.getInstance().getScanLockList().clear();  //先清空绑定列表
+
+        getTmpConnectLockList().clear();
+        getTmpConnectLockList().addAll(SinovoBle.getInstance().getToConnectLockList());
+
+        Log.d(TAG, "准备进行网关蓝牙配网，先保存下当前连接锁的信息，数："+getTmpConnectLockList().size());
+
+        disconnBle();
+        setScanAgain(true);
+        startBleScan();
+
+        setGwWifiPass(wifiPass);
+        setGwConfigCallback(GWSmartConfigCallback);
+
+        WifiInfo info = mWifiManager.getConnectionInfo();
+        if (info != null) {
+            setWifiInfo(getSSIDRawData(info));
+        }
+    }
+
+    /**
+     * 取消网关蓝牙配网
+     */
+    public void finishConfigureGW(){
+        BleConnCallBack.getInstance().setMyBleDevice(null);
+        if (blufiClient != null) {
+            blufiClient.requestCloseConnection();
+            blufiClient.close();
+            blufiClient = null;
+        }
+
+        SinovoBle.getInstance().setGWConfigMode(false);
+        SinovoBle.getInstance().setLinked(false);
+        SinovoBle.getInstance().setConnected(false);
+
+        getToConnectLockList().clear();
+
+        Log.d(TAG,"取消网关配网，需要重连会 原来的锁，tmpLockList:"+ getTmpConnectLockList().size());
+
+        if (!getTmpConnectLockList().isEmpty()){
+            connectLockViaMacSno(getTmpConnectLockList());
+        }
+    }
+
+    private byte[] getSSIDRawData(WifiInfo info) {
+        try {
+            Method method = info.getClass().getMethod("getWifiSsid");
+            method.setAccessible(true);
+            Object wifiSsid = method.invoke(info);
+            if (wifiSsid == null) {
+                return null;
+            }
+            method = wifiSsid.getClass().getMethod("getOctets");
+            method.setAccessible(true);
+            return (byte[]) method.invoke(wifiSsid);
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | NullPointerException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Try to connect device
+     */
+    public void connectGW(BluetoothDevice bluetoothDevice) {
+
+        if (blufiClient != null) {
+            blufiClient.close();
+            blufiClient = null;
+        }
+
+        blufiClient = new BlufiClient(getContext(), bluetoothDevice);
+        blufiClient.setGattCallback(BleConnCallBack.getInstance());
+        blufiClient.setBlufiCallback(new BlufiCallbackMain());
+        blufiClient.connect();
+
+        BleConnCallBack.getInstance().setMyBleDevice(bluetoothDevice);
     }
 
     /**
@@ -621,12 +754,12 @@ public class SinovoBle {
      */
     public void addUser(String userName, String lockSNO){
         if (userName.isEmpty() || userName.length()>10){
-            Log.e(TAG, "Username is error");
+            Log.e(TAG, "Username is error，The length of the username is 0-10 characters");
             return ;
         }
 
         if (lockSNO.length() != 6){
-            Log.e(TAG, "LOCK SNO is error");
+            Log.e(TAG, "LockSno is error，The length of LockSno is 6 characters");
             return ;
         }
 
@@ -641,12 +774,12 @@ public class SinovoBle {
      */
     public void updateUserName(String userName, String userNID, String lockSNO){
         if (userNID.isEmpty() || userName.length()>10 ){
-            Log.e(TAG,"Parameter error");
+            Log.e(TAG, "parameter is error，The length of the username is 0-10 characters");
             return ;
         }
 
         if (lockSNO.length() != 6){
-            Log.e(TAG, "LOCK SNO is error");
+            Log.e(TAG, "LockSno is error，The length of LockSno is 6 characters");
             return ;
         }
 
@@ -740,7 +873,6 @@ public class SinovoBle {
         String data = lockSNO + userNid + codeType + codeID + newCode;
         BleData.getInstance().exeCommand("0d", data, false);
     }
-
 
     /**
      * Set properties of the lock
@@ -847,10 +979,11 @@ public class SinovoBle {
      *                 05 get the lockname
      *                 06 get time of the lock
      *                 07 get auto-lock time of the lock
-     *                 08 get the mute setting
+     *                 08 get the volume setting
      *                 09 get the auto-create setting
      *                 10 get the superUser's priority
      *                 11 get the basetime of the lock
+     *                 12 get lock info（power、status、auto-lock、volume、auto-create、superUser、firmware）
      */
     public void getLockInfo(String dataType ,String lockSNO){
         if (lockSNO.length() != 6){
@@ -871,7 +1004,7 @@ public class SinovoBle {
         if (dataType.equals("09")){ BleData.getInstance().exeCommand("09", lockSNO, false); }
         if (dataType.equals("10")){ BleData.getInstance().exeCommand("23", lockSNO, false); }
         if (dataType.equals("11")){ BleData.getInstance().exeCommand("1f", lockSNO, false); }
-
+        if (dataType.equals("12")){ BleData.getInstance().exeCommand("2c", lockSNO, false); }
     }
 
     /**
@@ -976,18 +1109,6 @@ public class SinovoBle {
         BleData.getInstance().exeCommand("08", data, true);
     }
 
-//    /**
-//     * 通知锁端断开蓝牙连接
-//     */
-//    public void toDisconnBle(String lockSNO){
-//        if (lockSNO.length() != 6){
-//            Log.e(TAG, "LOCK SNO is error");
-//            return ;
-//        }
-//
-//        BleData.getInstance().exeCommand("1e", lockSNO, true);
-//    }
-
     /**
      * 开关门操作
      * @param unlockType 00 表示锁门，01表示开门
@@ -1012,7 +1133,6 @@ public class SinovoBle {
      * @param datakType 表示清空数据的类型；
      *                  00 表示清空用户，不会删除管理员
      *                  0c 表示恢复出厂设置
-     *
      */
     public void cleanData(String datakType, String lockSNO){
         if (datakType.isEmpty()){
@@ -1028,7 +1148,6 @@ public class SinovoBle {
         BleData.getInstance().exeCommand("0c", data, false);
     }
 
-
     //用户取消了绑定
     public void cancelAddLock(){
         if (!isBindMode()){
@@ -1043,8 +1162,7 @@ public class SinovoBle {
         BleConnCallBack.getInstance().disConectBle();
     }
 
-    //生成区间动态密码
-    /**
+    /**生成区间动态密码
      * Calculate periodic code
      * @param lockmac  lock mac address, such as 00A051F4D44A
      * @param starttime  start time, such as 12:23
@@ -1072,7 +1190,7 @@ public class SinovoBle {
         }
 
         if ((starttime_tmp.length() == 5 && starttime_tmp.contains(":")) && (endtime_tmp.length() == 5 && endtime_tmp.contains(":"))){
-            String macaddr = lockmac.replace(":","");
+            String macaddr = lockmac.replace(":","").toLowerCase();
             result =  getMyJniLib().getIntervalCode(macaddr, starttime, endtime, codeType);
         }else {
             result = "Error:The time format is wrong, such as 12:34";
@@ -1091,7 +1209,8 @@ public class SinovoBle {
      * @return code
      */
     public String calcDyCode(String lockmac, String basetime,  String starttime, String valid, int type){
-
+        Log.d(TAG, "准备calcDyCode() 来生成动态密码，lockmac："+ lockmac + ",basetime:"+ basetime
+                + ",starttime:"+ starttime + ",valid:"+valid +",type:"+type );
         ArrayList<String> codetypelist = new ArrayList<>();
         if (type == 0) {
             codetypelist.add("3");
@@ -1114,7 +1233,9 @@ public class SinovoBle {
             String validV = validTmp.split(" ")[0];
             String validT = validTmp.split(" ")[1];
             if (diff > 0){
-                String macaddr = lockmac.replace(":","");
+                String macaddr = lockmac.replace(":","").toLowerCase();
+                Log.d(TAG, "准备调用MyJniLib() 来生成动态密码，mac："+ macaddr + ",diff:"+ diff
+                        + ",starttime:"+ starttime + ",validv:"+validV +",validT:"+validT +",codeType:" + codeType);
                 result = getMyJniLib().getDyCode(macaddr, String.valueOf(diff), starttime, validV, validT, codeType);
             }else {
                 result = "Error: Basetime cannot be later than start time";
@@ -1158,14 +1279,14 @@ public class SinovoBle {
             return ;
         }
 
-        if (toConnectLockList.isEmpty() && !isBindMode()){
-            Log.e(TAG, "toConnectLockList is empty and is not bindmode");
+        if (toConnectLockList.isEmpty() && !isBindMode() && !isGWConfigMode()){
+            Log.e(TAG, "toConnectLockList is empty and is not bindmode, not GWConfigMode");
             setScanAgain(false);
             return ;
         }
 
         if (BleScanCallBack.getInstance(iScanCallBack).isScanning()){
-            Log.e(TAG, "It's scanning. please wait");
+            Log.e(TAG, "It's scanning. ignore");
             return ;
         }
 
@@ -1175,20 +1296,22 @@ public class SinovoBle {
         //更加 UUID 来过滤
         List<ScanFilter> filters = new ArrayList<>();
 
-        if (SinovoBle.getInstance().isDfuMode()){
-            Log.d(TAG, "DFU MAC:"+ getDfu_mac());
-            ScanFilter filter1 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_DFU)).build();
+        if (SinovoBle.getInstance().isGWConfigMode()){
+            Log.d(TAG, "网关蓝牙配网");
+            ScanFilter filter1 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_GW)).build();
             filters.add(filter1);
         }else {
-            ScanFilter filter1 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_FM60)).build();
-            ScanFilter filter2 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_FM67)).build();
+            if (SinovoBle.getInstance().isDfuMode()){
+                Log.d(TAG, "DFU MAC:"+ getDfu_mac());
+                ScanFilter filter1 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_DFU)).build();
+                filters.add(filter1);
+            }else {
+                ScanFilter filter1 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_FM60)).build();
+                ScanFilter filter2 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BleConstant.SERVICE_UUID_FM67)).build();
 
-            //科技侠的锁  "00001910-0000-1000-8000-00805f9b34fb";
-//            String uuid3 = "00001910-0000-1000-8000-00805f9b34fb";
-//            ScanFilter filter3 = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(uuid3)).build();
-            filters.add(filter1);
-            filters.add(filter2);
-//            filters.add(filter3);
+                filters.add(filter1);
+                filters.add(filter2);
+            }
         }
 
         Log.d(TAG, "Start scanning");
@@ -1201,7 +1324,6 @@ public class SinovoBle {
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .setReportDelay(0)  //扫描到结果，立马报告
                 .build();
-
         bluetoothAdapter.getBluetoothLeScanner().startScan(filters, bleScanSettings, BleScanCallBack.getInstance(iScanCallBack));      //根据指定参数来过滤
     }
 
@@ -1240,7 +1362,10 @@ public class SinovoBle {
 
         setConnectTime(ComTool.getNowTime());
         SinovoBle.getInstance().setConnectting(true);
-        SinovoBle.getInstance().setConnectingMac(bluetoothDevice.getAddress());
+        BleConnCallBack.getInstance().setMyBleDevice(bluetoothDevice);
+
+        //add wrk 20210819
+        BleConnCallBack.getInstance().releaseBle();
 
         Handler mHandler = new Handler(getContext().getMainLooper());
         mHandler.post(() -> {
@@ -1262,7 +1387,6 @@ public class SinovoBle {
 
     //进行 dfu 升级, dfu 升级的mac地址与正常通信的不一样，需要加+1
     public void upgradeFW(Context context, String mac  ,String dfuPath){
-
         SinovoBle.getInstance().setLinked(false);
         SinovoBle.getInstance().setConnected(false);
         SinovoBle.getInstance().setConnectting(false);
@@ -1319,5 +1443,81 @@ public class SinovoBle {
         SinovoBle.getInstance().getToConnectLockList().clear();
         SinovoBle.getInstance().setScanAgain(false);
         BleConnCallBack.getInstance().disConectBle();
+
+        //设置当前连接的锁 为空
+        BleConnCallBack.getInstance().setMyBleDevice(null);
+    }
+
+    private class BlufiCallbackMain extends BlufiCallback {
+        @Override
+        public void onGattPrepared(BlufiClient client, BluetoothGatt gatt, BluetoothGattService service,
+                                   BluetoothGattCharacteristic writeChar, BluetoothGattCharacteristic notifyChar) {
+            if (service == null) {
+                Log.d(TAG, "Discover service failed");
+                gatt.disconnect();
+                return;
+            }
+            if (writeChar == null) {
+                Log.d(TAG, "Get write characteristic failed");
+                gatt.disconnect();
+                return;
+            }
+            if (notifyChar == null) {
+                Log.d(TAG, "Get notification characteristic failed");
+                gatt.disconnect();
+                return;
+            }
+
+            Log.d(TAG, "Discover service and characteristics success");
+
+            Log.d(TAG, "Request MTU " + 512);
+            boolean requestMtu = gatt.requestMtu(512);
+            if (!requestMtu) {
+                Log.d(TAG, "Request mtu failed");
+            }
+        }
+
+        @Override
+        public void onPostConfigureParams(BlufiClient client, int status) {
+            if (status == STATUS_SUCCESS) {
+                Log.d(TAG, "Post configure params complete");
+                BleConnCallBack.getInstance().setMyBleDevice(null);
+            } else {
+                Log.d(TAG, "Post configure params failed, code=" + status);
+            }
+        }
+
+        @Override
+        public void onDeviceStatusResponse(BlufiClient client, int status, BlufiStatusResponse response) {
+            if (status == STATUS_SUCCESS) {
+                String result = response.generateValidInfo();
+                Log.d(TAG, "Receive device status response:" + result);
+                String[] res = result.split("bssid:");
+                String gwID = "";
+                if (res.length >0){
+                    gwID = res[1].trim().toUpperCase();
+                }
+                Log.d(TAG, "网关配网成功，网关id：" + gwID);
+                BleConnCallBack.getInstance().setMyBleDevice(null);
+                gwConfigCallback.onConfigSUCCESS(gwID);
+            } else {
+                Log.d(TAG, "Device status response error, code=" + status);
+            }
+        }
+
+        @Override
+        public void onReceiveCustomData(BlufiClient client, int status, byte[] data) {
+            if (status == STATUS_SUCCESS) {
+                String customStr = new String(data);
+                Log.d(TAG, String.format("Receive custom data:\n%s", customStr));
+            } else {
+                Log.d(TAG, "Receive custom data error, code=" + status);
+            }
+        }
+
+        @Override
+        public void onError(BlufiClient client, int errCode) {
+            Log.d(TAG, String.format(Locale.ENGLISH, "Receive error code %d", errCode));
+        }
     }
 }

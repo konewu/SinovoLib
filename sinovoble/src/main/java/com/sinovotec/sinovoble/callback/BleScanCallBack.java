@@ -10,7 +10,6 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import com.alibaba.fastjson.JSONObject;
-import com.sinovotec.mqtt.MqttLib;
 import com.sinovotec.sinovoble.SinovoBle;
 import com.sinovotec.sinovoble.common.BleConnectLock;
 import com.sinovotec.sinovoble.common.BleScanDevice;
@@ -60,7 +59,15 @@ public class BleScanCallBack extends ScanCallback {
 
                         if (SinovoBle.getInstance().isDfuMode()){
                             Log.w(TAG,"dfu升级模式下，扫描得到的锁mac："+ bleScanDevice.GetDevice().getAddress());
-                            SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
+                            new Handler(Looper.getMainLooper()).postDelayed(() -> SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice()), 500);
+                            return;
+                        }
+
+                        if (SinovoBle.getInstance().isGWConfigMode()){
+                            Log.w(TAG,"网关配网模式下，扫描得到的锁mac："+ bleScanDevice.GetDevice().getAddress());
+                            SinovoBle.getInstance().setScanAgain(false);
+                            BleScanCallBack.getInstance(iScanCallBack).stopScan();
+                            new Handler(Looper.getMainLooper()).postDelayed(() -> SinovoBle.getInstance().connectGW(bleScanDevice.GetDevice()), 800);
                             return;
                         }
 
@@ -92,6 +99,7 @@ public class BleScanCallBack extends ScanCallback {
 
                                                 Log.w(TAG, "[Ble connect] 开始进行自动连接xx:"+ bleScanDevice.GetDevice().getAddress());
                                                 SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice());
+//                                                new Handler(Looper.getMainLooper()).postDelayed(() -> SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice()), 1000);
                                                 break;
                                             }
                                         }
@@ -268,9 +276,9 @@ public class BleScanCallBack extends ScanCallback {
 
         SinovoBle.getInstance().getBluetoothAdapter().getBluetoothLeScanner().stopScan(instance);
         Log.d(TAG, "force to  stop ble scan ,scanAgain:"+ SinovoBle.getInstance().isScanAgain() +",bindmode:"+ SinovoBle.getInstance().isBindMode());
-        if (SinovoBle.getInstance().isScanAgain() || SinovoBle.getInstance().isBindMode()) {
-            Log.d(TAG, "now stop and scan again after 500ms");
-            SinovoBle.getInstance().getScanBleHandler().postDelayed(() -> SinovoBle.getInstance().bleScan(iScanCallBack), 1000);
+        if (SinovoBle.getInstance().isScanAgain() || SinovoBle.getInstance().isBindMode()) { //
+            Log.d(TAG, "now stop and scan again after 800ms");
+            SinovoBle.getInstance().getScanBleHandler().postDelayed(() -> SinovoBle.getInstance().bleScan(iScanCallBack), 800);
         }
 
         if (!SinovoBle.getInstance().isBindMode() && !SinovoBle.getInstance().isScanOnly() && !SinovoBle.getInstance().isDfuMode()) {

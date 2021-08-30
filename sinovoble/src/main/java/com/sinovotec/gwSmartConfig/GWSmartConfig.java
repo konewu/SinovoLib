@@ -6,6 +6,8 @@ import android.util.Log;
 import com.sinovotec.andesptouch.AndEsptouch;
 import com.sinovotec.andesptouch.AndEsptouchHelper;
 
+// mtk 方案的 smartconfig
+
 public class GWSmartConfig {
     private static final String TAG = "SinovoBle";
     private static GWSmartConfig instance;

@@ -131,8 +131,8 @@ public class TcpSocket {
                                     msgFromTcp = msgFromTcp.replaceAll("\\p{C}", "");   //去掉不可见的字符
 //                                    Log.e(TAG, "收到tcp 服务端的数据：" + msgFromTcp);
 //                                    Log.e(TAG, "当前发送的数据：" + cmd);
-                                    MqttLib.getInstance().setTcpSendFaild(0);   //收到回复，表示发送成功
-                                    MqttLib.getInstance().setTcpSendFaildInter(0);
+//                                    MqttLib.getInstance().setTcpSendFaild(0);   //收到回复，表示发送成功
+//                                    MqttLib.getInstance().setTcpSendFaildInter(0);
 
                                     String[] strarray = msgFromTcp.split("[}]");
                                     for (String msgSub: strarray) {
@@ -270,10 +270,10 @@ public class TcpSocket {
 
     public void sendFaild(String msg){
         Log.i(TAG, "命令："+msg+" 发送失败");
-        if (MqttLib.getInstance().getTcpSendFaild() == 0){
-            MqttLib.getInstance().setTcpSendFaildInter(System.currentTimeMillis());
-        }
-        MqttLib.getInstance().setTcpSendFaild(MqttLib.getInstance().getTcpSendFaild() + 1);
+//        if (MqttLib.getInstance().getTcpSendFaild() == 0){
+//            MqttLib.getInstance().setTcpSendFaildInter(System.currentTimeMillis());
+//        }
+//        MqttLib.getInstance().setTcpSendFaild(MqttLib.getInstance().getTcpSendFaild() + 1);
         commandList.clear();
         isConnected = false;
         isSending = false;

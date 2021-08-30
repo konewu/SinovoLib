@@ -209,8 +209,6 @@ public class HttpLib {
                 }
                 byte[] in_b = swapStream.toByteArray(); //in_b为转换之后的结果
 
-//                bitmap[0] = BitmapFactory.decodeStream(is);
-             //   httpLibCallback.onGetLockImage(bitmap[0], dataType);
                 if (dataType.length() >0) {
                     httpLibCallback.onGetLockImage(in_b, dataType);
                 }else {
@@ -391,7 +389,7 @@ public class HttpLib {
             case 25:    //上传日志文件
                 httpLibCallback.onUploadFile(resultStr);
                 break;
-            case 26:
+            case 26:    //删除网关的子设备，解除网关与锁的关联
                 httpLibCallback.onDelGwSubLock(resultStr);
                 break;
         }
@@ -758,7 +756,6 @@ public class HttpLib {
         String cmdString = new JSONObject(cmdMap).toString();
         toSendDataWithThread(cmdString);
     }
-
 
     /**
      * Share the lock to other users

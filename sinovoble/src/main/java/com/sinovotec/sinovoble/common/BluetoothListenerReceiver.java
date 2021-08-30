@@ -60,7 +60,6 @@ public class BluetoothListenerReceiver extends BroadcastReceiver {
                             SinovoBle.getInstance().setLinked(false);
                         }
                     }
-
                     break;
                 case BluetoothAdapter.STATE_OFF:
                     Log.e(TAG, "onReceive---------Bluetooth is off");
@@ -82,17 +81,21 @@ public class BluetoothListenerReceiver extends BroadcastReceiver {
                         String wifiSSID = ComTool.getWifiName(context.getApplicationContext());
                         Log.i(TAG, "连接到wifi " + wifiSSID);
                         MqttLib.getInstance().setConnectType(1);
+                        SinovoBle.getInstance().getmConnCallBack().onConnectedViaWifi(wifiSSID);
                     }else if (info.getType() == ConnectivityManager.TYPE_MOBILE){
                         Log.e(TAG, "连上 数据网络");
                         MqttLib.getInstance().setConnectType(2);
+                        SinovoBle.getInstance().getmConnCallBack().onConnectedViaMobile();
                     }
                 } else {
                     MqttLib.getInstance().setConnectType(0);
                     Log.e(TAG,  "网络断开");
+                    SinovoBle.getInstance().getmConnCallBack().onInternetDisconned();
                 }
             }else {
                 MqttLib.getInstance().setConnectType(0);
                 Log.e(TAG, "获取不到网络信息");
+                SinovoBle.getInstance().getmConnCallBack().onInternetDisconned();
             }
         }
 
@@ -110,10 +113,10 @@ public class BluetoothListenerReceiver extends BroadcastReceiver {
         //熄屏 亮屏的广播
         switch (action) {
             case Intent.ACTION_SCREEN_OFF:  //收到熄屏广播
-                Log.d(TAG, "收到熄屏广播");
+                SinovoBle.getInstance().getmConnCallBack().onScreenOff();
                 break;
             case Intent.ACTION_SCREEN_ON:   //收到亮屏广播
-                Log.d(TAG, "收到亮屏广播");
+                SinovoBle.getInstance().getmConnCallBack().onScreenOn();
                 break;
         }
     }
