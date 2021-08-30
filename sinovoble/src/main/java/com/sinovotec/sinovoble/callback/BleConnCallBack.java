@@ -125,7 +125,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                                 }
                             }else {
                                 if (!SinovoBle.getInstance().getToConnectLockList().isEmpty() || SinovoBle.getInstance().isGWConfigMode()){
-                                    if (getMyBleDevice().getAddress().equals(gatt.getDevice().getAddress())){
+                                    if (getMyBleDevice()!=null &&getMyBleDevice().getAddress().equals(gatt.getDevice().getAddress())){
                                         Log.i(TAG, "[Ble connect]连接状态出错，关闭gatt资源,断开连接");
                                         afterDisconnected(gatt.getDevice());
                                     }else {
@@ -135,7 +135,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                                 }else {
                                     if (SinovoBle.getInstance().isBindMode()){
                                         if (SinovoBle.getInstance().getScanLockList().size() >0) {
-                                            if (gatt.getDevice().getAddress().equals(getMyBleDevice().getAddress())){
+                                            if (getMyBleDevice()!=null &&getMyBleDevice().getAddress().equals(gatt.getDevice().getAddress())){
                                                 Log.w(TAG, "[Ble connect]绑定模式下。连接丢失。mac:"+ getMyBleDevice().getAddress());
                                                 afterDisconnected(gatt.getDevice());
                                             }
@@ -534,7 +534,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                     SinovoBle.getInstance().getBondBleMacList().clear();
                     SinovoBle.getInstance().getScanLockList().clear();
                 }else {
-                  //  绑定的时候，如果不是绑定成功的，则添加到已经绑定过的列表中
+                    //  绑定的时候，如果不是绑定成功的，则添加到已经绑定过的列表中
                     SinovoBle.getInstance().getBondBleMacList().add(SinovoBle.getInstance().getLockMAC());
                     SinovoBle.getInstance().getScanLockList().remove(0);  //删除对首的设备，
                     //再次开启扫描 发现新设备来连接
