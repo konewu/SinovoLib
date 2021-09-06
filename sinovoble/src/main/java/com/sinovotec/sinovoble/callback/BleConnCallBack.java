@@ -534,7 +534,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                     SinovoBle.getInstance().getBondBleMacList().clear();
                     SinovoBle.getInstance().getScanLockList().clear();
                 }else {
-                    //  绑定的时候，如果不是绑定成功的，则添加到已经绑定过的列表中
+                  //  绑定的时候，如果不是绑定成功的，则添加到已经绑定过的列表中
                     SinovoBle.getInstance().getBondBleMacList().add(SinovoBle.getInstance().getLockMAC());
                     SinovoBle.getInstance().getScanLockList().remove(0);  //删除对首的设备，
                     //再次开启扫描 发现新设备来连接
