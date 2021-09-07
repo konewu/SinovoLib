@@ -165,6 +165,23 @@ public class MqttLib {
                         if (listcmdFun.equalsIgnoreCase(databackFun)){
                             Log.d(TAG, "已经收到此数据的回复，功能码："+databackFun+", 从队列中删除该命令");
                             getMqttCMDList().removeFirst();
+
+                            //如果队列中还有命令，则尝试去发送它
+                            if (!getMqttCMDList().isEmpty()){
+                                String cmd2send = getMqttCMDList().getFirst();
+                                Log.d(TAG, "命令行队列还有命令，需要继续发送" + cmd2send);
+                                if (isMqttOK){
+                                    setSendingCmdMQTT(true);
+                                    Log.d(TAG, "send command via mqtt:" + cmd2send);
+                                    publishMessage(cmd2send);
+                                }else{
+                                    setSendingCmdMQTT(false);
+                                    Log.d(TAG, "MQTT is not ready, it cann't send command:" + cmd2send);
+                                    if (iotMqttCallback != null) {
+                                        iotMqttCallback.onPublishFailed();
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -186,22 +203,6 @@ public class MqttLib {
 
                     iotMqttCallback.onMsgArrived(topic,JSON.toJSONString(resultmap));
 
-                    //如果队列中还有命令，则尝试去发送它
-                    if (!getMqttCMDList().isEmpty()){
-                        String cmd2send = getMqttCMDList().getFirst();
-                        Log.d(TAG, "命令行队列还有命令，需要继续发送" + cmd2send);
-                        if (isMqttOK){
-                            setSendingCmdMQTT(true);
-                            Log.d(TAG, "send command via mqtt:" + cmd2send);
-                            publishMessage(cmd2send);
-                        }else{
-                            setSendingCmdMQTT(false);
-                            Log.d(TAG, "MQTT is not ready, it cann't send command:" + cmd2send);
-                            if (iotMqttCallback != null) {
-                                iotMqttCallback.onPublishFailed();
-                            }
-                        }
-                    }
                 }else {
                     //如果推送的锁离线 在线的状态，则需要重设 发送命令的标记
                     if (type.equalsIgnoreCase("lockStatus")){
