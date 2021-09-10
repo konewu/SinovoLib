@@ -200,9 +200,7 @@ public class MqttLib {
                     resultmap.put("uuid", uuid);
                     resultmap.put("gateway_id", gateway_id);
                     resultmap.put("mac", mac);
-
                     iotMqttCallback.onMsgArrived(topic,JSON.toJSONString(resultmap));
-
                 }else {
                     //如果推送的锁离线 在线的状态，则需要重设 发送命令的标记
                     if (type.equalsIgnoreCase("lockStatus")){

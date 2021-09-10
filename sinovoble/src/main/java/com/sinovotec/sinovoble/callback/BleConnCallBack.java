@@ -644,7 +644,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                 exeCmdMaxCount = 0;
                 Log.w(TAG, "Cmd:"+ BleData.getInstance().getCommandList().getFirst()+" send ok");
                 //延迟1.5秒后再检测 是否已经收到锁端的恢复
-                sendDataHandler.postDelayed(() -> BleData.getInstance().checkDataReceive(), 2000);
+                sendDataHandler.postDelayed(() -> BleData.getInstance().checkDataReceive(), 3000);
             }else {
                 exeCmdMaxCount ++;
                 Log.e(TAG, "Cmd:"+ BleData.getInstance().getCommandList().getFirst()+" send failed， exeCmdMaxCount："+exeCmdMaxCount);

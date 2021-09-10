@@ -1306,10 +1306,7 @@ public class BleData {
         if (errCode.equals("00") && len>=12) {
             String lockMAC       = datavalue.substring(0, 12);
             lockMAC = macWithColon(lockMAC).toUpperCase();
-            if (!SinovoBle.getInstance().getLockMAC().equals(lockMAC)){
-                SinovoBle.getInstance().setLockMAC(lockMAC);
-            }
-            map.put("lockMac", SinovoBle.getInstance().getLockMAC());
+            map.put("lockMac", lockMAC);
         }
         return map;
     }

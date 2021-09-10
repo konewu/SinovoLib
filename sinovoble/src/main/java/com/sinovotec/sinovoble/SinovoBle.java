@@ -379,10 +379,6 @@ public class SinovoBle {
         return tmpConnectLockList;
     }
 
-//    public void setTtmpConnectLockList(ArrayList<BleConnectLock> toConnectLockList) {
-//        this.tmpConnectLockList = toConnectLockList;
-//    }
-
     public LoadLibJni getMyJniLib() {
         if (myJniLib == null){
             if (LoadLibJni.LoadLib()){
@@ -752,9 +748,16 @@ public class SinovoBle {
      * 创建用户,默认创建的是普通用户
      * @param userName string
      */
-    public void addUser(String userName, String lockSNO){
+    public void addUser(String userName, String lockSNO, String lockMacAddress){
         if (userName.isEmpty() || userName.length()>10){
             Log.e(TAG, "Username is error，The length of the username is 0-10 characters");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -772,9 +775,16 @@ public class SinovoBle {
      * @param userName 用户名
      * @param userNID   用户的nid
      */
-    public void updateUserName(String userName, String userNID, String lockSNO){
+    public void updateUserName(String userName, String userNID, String lockSNO, String lockMacAddress){
         if (userNID.isEmpty() || userName.length()>10 ){
             Log.e(TAG, "parameter is error，The length of the username is 0-10 characters");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -797,9 +807,16 @@ public class SinovoBle {
      * @param dataType      数据类型， 02 普通密码，03超级用户密码，06是卡，07是指纹，08是防胁迫指纹
      * @param data          添加密码时具体的密码内容， 如果是添加卡/指纹时，留空即可
      */
-    public void addDataForUser(String userNID, String dataType, String data, String lockSNO){
+    public void addDataForUser(String userNID, String dataType, String data, String lockSNO, String lockMacAddress){
         if (userNID.isEmpty() || dataType.isEmpty()){
             Log.e(TAG,"Parameter error");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -831,9 +848,16 @@ public class SinovoBle {
      * @param dataType s
      * @param delID s
      */
-    public void delData(String dataType, String delID, String lockSNO){
+    public void delData(String dataType, String delID, String lockSNO, String lockMacAddress){
         if (delID.isEmpty() || dataType.isEmpty()){
             Log.e(TAG,"Parameter error");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -859,9 +883,16 @@ public class SinovoBle {
      * @param codeID   密码的ID
      * @param newCode  新的密码
      */
-    public void resetCode(String userNid, String codeType, String codeID, String newCode, String lockSNO){
+    public void resetCode(String userNid, String codeType, String codeID, String newCode, String lockSNO, String lockMacAddress){
         if (userNid.isEmpty() || codeType.isEmpty() || codeID.isEmpty() || newCode.isEmpty()){
             Log.e(TAG,"Parameter error");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -890,9 +921,16 @@ public class SinovoBle {
      *                 07 set the lock into DFU OTA , update Firmware
      * @param data  value
      */
-    public void setLockInfo(String dataType, String data, String lockSNO){
+    public void setLockInfo(String dataType, String data, String lockSNO, String lockMacAddress){
         if (lockSNO.length() != 6){
             Log.e(TAG, "LOCK SNO is error");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -985,9 +1023,16 @@ public class SinovoBle {
      *                 11 get the basetime of the lock
      *                 12 get lock info（power、status、auto-lock、volume、auto-create、superUser、firmware）
      */
-    public void getLockInfo(String dataType ,String lockSNO){
+    public void getLockInfo(String dataType ,String lockSNO, String lockMacAddress){
         if (lockSNO.length() != 6){
             Log.e(TAG, "LOCK SNO is error");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -1010,9 +1055,16 @@ public class SinovoBle {
     /**
      * 同步数据，包括用户信息
      */
-    public void getAllUsers(String lockSNO){
+    public void getAllUsers(String lockSNO, String lockMacAddress){
         if (lockSNO.length() != 6){
             Log.e(TAG, "LOCK SNO is error");
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
+            return ;
         }
 
         String data = lockSNO +"00";
@@ -1023,12 +1075,20 @@ public class SinovoBle {
      * 同步日志
      * @param logID  ，表示当前的日志id ,日志量比较大，所以支持从指定的id开始同步，如果 id为 ff ，则同步所有的日志
      */
-    public void getLog(String logID, String lockSNO){
+    public void getLog(String logID, String lockSNO, String lockMacAddress){
 
         if (lockSNO.length() != 6){
             Log.e(TAG, "LOCK SNO is error");
             return ;
         }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
+            return ;
+        }
+
         String data = lockSNO + logID;
         BleData.getInstance().exeCommand("17", data, false);
     }
@@ -1038,7 +1098,7 @@ public class SinovoBle {
      * @param dynamicCode  对应的 动态密码
      * @param enable  00 表示禁用， 01 表示启动
      */
-    public void doDynamicCode(String dynamicCode, String enable, String lockSNO){
+    public void doDynamicCode(String dynamicCode, String enable, String lockSNO, String lockMacAddress){
         if (dynamicCode.isEmpty() ||!(enable.equals("00") || enable.equals("01"))){
             Log.e(TAG,"Parameter error");
             return;
@@ -1049,10 +1109,16 @@ public class SinovoBle {
             return ;
         }
 
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
+            return ;
+        }
+
         String data = lockSNO + enable + dynamicCode;
         BleData.getInstance().exeCommand("20", data, false);
     }
-
 
     /**
      * 修改密码的属性，改普通密码、超级用户密码
@@ -1060,7 +1126,7 @@ public class SinovoBle {
      * @param codeID       密码的id
      * @param newCodeType  新的密码类型 ，02 普通密码，03 超级用户密码; 该字段为空，则表示查询此密码的类型
      */
-    public void updateCodeType(String oldCodeType, String codeID, String newCodeType, String lockSNO){
+    public void updateCodeType(String oldCodeType, String codeID, String newCodeType, String lockSNO, String lockMacAddress){
         if (oldCodeType.isEmpty() || codeID.isEmpty()){
             Log.e(TAG,"Parameter error");
             return ;
@@ -1068,6 +1134,13 @@ public class SinovoBle {
 
         if (oldCodeType.equals(newCodeType)){
             Log.e(TAG,"The new Code type is the same as the old Code type");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -1094,9 +1167,16 @@ public class SinovoBle {
      * 校验密码
      * @param password 密码
      */
-    public void verifyCode(String password, String lockSNO){
+    public void verifyCode(String password, String lockSNO, String lockMacAddress){
         if (password.isEmpty()){
             Log.e(TAG,"Parameter error");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -1113,9 +1193,16 @@ public class SinovoBle {
      * 开关门操作
      * @param unlockType 00 表示锁门，01表示开门
      */
-    public void toUnlock(String unlockType, String code, String lockSNO){
+    public void toUnlock(String unlockType, String code, String lockSNO, String lockMacAddress){
         if (unlockType.isEmpty() || code.isEmpty() || !(unlockType.equals("00") || unlockType.equals("01"))){
             Log.e(TAG,"Parameter error");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 
@@ -1134,9 +1221,16 @@ public class SinovoBle {
      *                  00 表示清空用户，不会删除管理员
      *                  0c 表示恢复出厂设置
      */
-    public void cleanData(String datakType, String lockSNO){
+    public void cleanData(String datakType, String lockSNO, String lockMacAddress){
         if (datakType.isEmpty()){
             Log.e(TAG,"Parameter error");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
             return ;
         }
 

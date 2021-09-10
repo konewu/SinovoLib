@@ -276,9 +276,9 @@ public class BleScanCallBack extends ScanCallback {
 
         SinovoBle.getInstance().getBluetoothAdapter().getBluetoothLeScanner().stopScan(instance);
         Log.d(TAG, "force to  stop ble scan ,scanAgain:"+ SinovoBle.getInstance().isScanAgain() +",bindmode:"+ SinovoBle.getInstance().isBindMode());
-        if (SinovoBle.getInstance().isScanAgain() || SinovoBle.getInstance().isBindMode()) { //
-            Log.d(TAG, "now stop and scan again after 800ms");
-            SinovoBle.getInstance().getScanBleHandler().postDelayed(() -> SinovoBle.getInstance().bleScan(iScanCallBack), 800);
+        if (SinovoBle.getInstance().isScanAgain() || SinovoBle.getInstance().isBindMode()) {
+            Log.d(TAG, "now stop and scan again after 1000ms");
+            SinovoBle.getInstance().getScanBleHandler().postDelayed(() -> SinovoBle.getInstance().bleScan(iScanCallBack), 1000);
         }
 
         if (!SinovoBle.getInstance().isBindMode() && !SinovoBle.getInstance().isScanOnly() && !SinovoBle.getInstance().isDfuMode()) {
