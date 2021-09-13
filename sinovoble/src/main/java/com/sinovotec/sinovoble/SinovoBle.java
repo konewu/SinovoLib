@@ -1538,6 +1538,9 @@ public class SinovoBle {
         SinovoBle.getInstance().setScanAgain(false);
         BleConnCallBack.getInstance().disConectBle();
 
+        BleData.getInstance().getCommandList().clear();
+        SinovoBle.getInstance().setLockMAC("");
+
         //设置当前连接的锁 为空
         BleConnCallBack.getInstance().setMyBleDevice(null);
     }

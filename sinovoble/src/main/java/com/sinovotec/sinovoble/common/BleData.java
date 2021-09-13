@@ -84,6 +84,11 @@ public class BleData {
             return map;
         }
 
+        //如果mac地址为空，则需要更新 写入当前蓝牙的 mac地址
+        if (SinovoBle.getInstance().getLockMAC().isEmpty()){
+            SinovoBle.getInstance().setLockMAC(macWithColon(mac));
+        }
+
         //收到回复，表示命令执行完成，将此命令从队列中删除
         if (!getCommandList().isEmpty()){
             String funcodelist = getCommandList().getFirst();

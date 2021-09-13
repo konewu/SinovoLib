@@ -42,7 +42,8 @@ public class BleConnCallBack extends BluetoothGattCallback {
     private BluetoothGattService mBleGattService;
     private BluetoothGattCharacteristic mBleGattCharacteristic;
 
-    Handler sendDataHandler = new Handler(Looper.getMainLooper()); //初始化 句柄，用于定时关闭扫描
+    Handler sendDataHandler  = new Handler(Looper.getMainLooper()); //初始化 句柄，用于定时关闭扫描
+    Handler discoverServiceH = new Handler(Looper.getMainLooper()); //初始化 句柄，检测 发现蓝牙服务超时的
 
     BleConnCallBack(){
         if (SinovoBle.getInstance().getmConnCallBack() == null){
@@ -150,6 +151,11 @@ public class BleConnCallBack extends BluetoothGattCallback {
                         @Override
                         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                             super.onServicesDiscovered(gatt, status);
+
+                            if (discoverServiceH != null) {
+                                Log.e(TAG, "[Ble connect]已经发现服务，取消超时检测" );
+                                discoverServiceH.removeCallbacksAndMessages(null);
+                            }
 
                             if (SinovoBle.getInstance().isGWConfigMode()){
                                 Log.e(TAG, "[Ble connect]连接网关ble成功，发现服务" );
@@ -325,11 +331,26 @@ public class BleConnCallBack extends BluetoothGattCallback {
         if (getmBluetoothGatt() != null){
             Log.d(TAG, "[Ble connect] now to discoverServices");
             getmBluetoothGatt().discoverServices();
+            if (discoverServiceH != null ){
+                discoverServiceH.removeCallbacksAndMessages(null);    //取消定时任务
+                discoverServiceH.postDelayed(this::checkDiscoverService, 3000);
+            }
         }else {
             Log.e(TAG, "[Ble connect] error! it's connected,but BluetoothGatt is null, need to init ble again");
             disConectBle();
         }
         setMyBleDevice(device);
+    }
+
+    /**
+     * 发现蓝牙服务，超时检测
+     */
+    public  void checkDiscoverService(){
+        Log.e(TAG, "发现蓝牙服务，超时检测, 断开蓝牙");
+        if (discoverServiceH != null ){
+            discoverServiceH.removeCallbacksAndMessages(null);    //取消定时任务
+        }
+        disConectBle();
     }
 
     /**
