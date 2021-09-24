@@ -80,6 +80,11 @@ public class MqttLib {
         return mqttCMDList;
     }
 
+    //mqtt ble 发送命令的句柄
+    public Handler getBleSendHandler() {
+        return bleSendHandler;
+    }
+
     /**
      * 初始化MQTT ，采用的 一机一密方式
      * @param context    上下文对象
@@ -516,7 +521,6 @@ public class MqttLib {
                     }
                 }
             }
-
         }
 
         if (dataType.equals("send2GW")){
@@ -731,7 +735,6 @@ public class MqttLib {
         getDataToSend(gatewayid, type, uuid, mac,datasend);
     }
 
-
     /**
      * get information of the lock
      * @param dataType
@@ -862,6 +865,15 @@ public class MqttLib {
       //  Log.d(TAG,"调用 toDisconnBle 来断开蓝牙连接");
         String datasend = mqttCommand("1e", sno, mac);
         getDataToSend(gatewayid, type, uuid, mac,datasend);
+    }
+
+    //停止mqtt 继续发送命令
+    public void stopMqttSendCmd(){
+        //同时清除 mqtt端的命令队列  --- add 20210916
+        MqttLib.getInstance().getMqttCMDList().clear();
+        MqttLib.getInstance().getBleSendHandler().removeCallbacksAndMessages(null);
+        setSendingCmdMQTT(false);
+        Log.d(TAG, "调用 stopMqttSendCmd 来停止 mqtt 队列命令的发送");
     }
 
     /**

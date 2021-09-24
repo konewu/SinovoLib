@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.UUID;
 
+import com.sinovotec.mqtt.MqttLib;
 import com.sinovotec.sinovoble.SinovoBle;
 import com.sinovotec.sinovoble.callback.BleConnCallBack;
 import static com.sinovotec.sinovoble.common.ComTool.toByte;

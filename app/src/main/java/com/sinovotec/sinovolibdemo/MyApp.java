@@ -40,6 +40,7 @@ public class MyApp extends Application {
     private QMUIRoundButton MaclockBtn;
 
     private String lockSno = "";
+    private String lockMac = "";
 
     public static MyApp getInstance() {
         if (myApp == null) {
@@ -256,5 +257,13 @@ public class MyApp extends Application {
 
     public void setLockSno(String lockSno) {
         this.lockSno = lockSno;
+    }
+
+    public String getLockMac() {
+        return lockMac;
+    }
+
+    public void setLockMac(String lockMac) {
+        this.lockMac = lockMac;
     }
 }

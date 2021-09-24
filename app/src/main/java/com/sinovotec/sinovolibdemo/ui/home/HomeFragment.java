@@ -74,7 +74,7 @@ public class HomeFragment extends Fragment {
             }
 
             MyApp.getInstance().setCode(code);
-            SinovoBle.getInstance().toUnlock(openType, code, MyApp.getInstance().getLockSno());
+            SinovoBle.getInstance().toUnlock(openType, code, MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
         });
 
 
@@ -83,16 +83,16 @@ public class HomeFragment extends Fragment {
                 Toast.makeText(getActivity(), getResources().getString(R.string.unconnect), Toast.LENGTH_SHORT).show();
                 return;
             }
-            SinovoBle.getInstance().getLockInfo("01", MyApp.getInstance().getLockSno());
-            SinovoBle.getInstance().getLockInfo("02", MyApp.getInstance().getLockSno());
-            SinovoBle.getInstance().getLockInfo("03", MyApp.getInstance().getLockSno());
-            SinovoBle.getInstance().getLockInfo("04", MyApp.getInstance().getLockSno());
-            SinovoBle.getInstance().getLockInfo("05", MyApp.getInstance().getLockSno());
-            SinovoBle.getInstance().getLockInfo("06", MyApp.getInstance().getLockSno());
-            SinovoBle.getInstance().getLockInfo("07", MyApp.getInstance().getLockSno());
-            SinovoBle.getInstance().getLockInfo("08", MyApp.getInstance().getLockSno());
-            SinovoBle.getInstance().getLockInfo("09", MyApp.getInstance().getLockSno());
-            SinovoBle.getInstance().getLockInfo("10", MyApp.getInstance().getLockSno());
+            SinovoBle.getInstance().getLockInfo("01", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
+            SinovoBle.getInstance().getLockInfo("02", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
+            SinovoBle.getInstance().getLockInfo("03", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
+            SinovoBle.getInstance().getLockInfo("04", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
+            SinovoBle.getInstance().getLockInfo("05", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
+            SinovoBle.getInstance().getLockInfo("06", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
+            SinovoBle.getInstance().getLockInfo("07", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
+            SinovoBle.getInstance().getLockInfo("08", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
+            SinovoBle.getInstance().getLockInfo("09", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
+            SinovoBle.getInstance().getLockInfo("10", MyApp.getInstance().getLockSno(), MyApp.getInstance().getLockMac());
 
         });
 

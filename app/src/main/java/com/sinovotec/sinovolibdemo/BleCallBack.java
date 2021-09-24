@@ -102,6 +102,7 @@ public class BleCallBack {
                 String code     = Objects.requireNonNull(maps.get("code")).toString();
 
                 MyApp.getInstance().setLockSno(lockSno);
+                MyApp.getInstance().setLockMac(lockmac);
 
                 callHandler(0,"");
                 String resultshow = "Lock Mac: "+lockmac + "\nLock SNO: " + lockSno + "\nLock QRCode: " +lockQRCode + "\nCode: " +code;
