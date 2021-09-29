@@ -511,6 +511,7 @@ public class SinovoBle {
 
             BluetoothListenerReceiver receiver = new BluetoothListenerReceiver();
             context.registerReceiver(receiver,makeFilter());
+
             appFilePath = Objects.requireNonNull(context.getExternalFilesDir("SinovoLib")).getPath();
             BleConnCallBack.getInstance().releaseBle();
 

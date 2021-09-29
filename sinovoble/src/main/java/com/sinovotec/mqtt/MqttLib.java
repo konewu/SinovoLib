@@ -365,6 +365,7 @@ public class MqttLib {
         } catch (MqttException e) {
             e.printStackTrace();
         }
+
         mqttAndroidClient.setCallback(null);
         mqttAndroidClient = null;
         Log.e(TAG,"logoutMQTT disconnect mqtt，exit");

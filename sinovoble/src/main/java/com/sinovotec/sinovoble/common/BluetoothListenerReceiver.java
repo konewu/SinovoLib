@@ -17,7 +17,6 @@ import java.util.Objects;
 /**
  *  用于监听手机的蓝牙开启与关闭的
  */
-
 public class BluetoothListenerReceiver extends BroadcastReceiver {
     final String TAG = "SinovoBleLib";
     @Override

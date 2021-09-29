@@ -74,14 +74,16 @@ public class BleData {
 
         //2、检测是否为fe开头的数据，非fe、fc开头则先不处理
         String headCode = data.substring(0,2);
-        if (!(headCode.equals("fe") || headCode.equals("fc"))){
+        if (!headCode.equals("fe")){
             map.put("errCode", "-3");
+            Log.e(TAG, "非fe开头的数据不处理，退出");
             return map;
         }
 
         String funcodebt = data.substring(2,4);
         if (funcodebt.equals("27")){
             map.put("errCode", "-4");
+            Log.e(TAG, "功能码为27（推送）的数据暂不处理，退出");
             return map;
         }
 
@@ -129,7 +131,7 @@ public class BleData {
             }
         }
 
-//        Log.d(TAG, "准备进行解密 接收到的密文：" + data + ",解密的mac：" + mac.toUpperCase());
+        Log.d(TAG, "准备进行解密 接收到的密文：" + data + ",解密的mac：" + mac.toUpperCase());
 
         //3、获取出来功能码 , 并进行解密处理
         String dataDecode = SinovoBle.getInstance().getMyJniLib().decryptAes(data.toLowerCase(), mac.toUpperCase());
@@ -137,6 +139,7 @@ public class BleData {
         if (dataDecode.contains("error")){
             map.put("errCode", "-3");
             map.put("error", dataDecode);
+            Log.d(TAG, "解密出错了：" + dataDecode);
             return map;
         }
 
@@ -148,6 +151,7 @@ public class BleData {
         //异常情况，解密为空
         if (datavalue.isEmpty() || funCode.isEmpty()){
             map.put("errCode", "-5");
+            Log.d(TAG, "异常情况，解密为空：" + dataDecode);
             return map;
         }
 
@@ -250,6 +254,7 @@ public class BleData {
         //查询锁的基本信息,包括 电量、门锁状态、自动锁门时间、音量大小、用户权限、固件版本
         if (funCode.equals("2c")) {return getLockBaseInfo(datavalue);}
 
+        Log.d(TAG, "其他情况，解密结果：" + dataDecode);
         return map;
     }
 
