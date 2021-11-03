@@ -12,6 +12,8 @@ import android.util.Log;
 import com.sinovotec.mqtt.MqttLib;
 import com.sinovotec.sinovoble.SinovoBle;
 import com.sinovotec.sinovoble.callback.BleConnCallBack;
+import com.sinovotec.sinovoble.callback.BleScanCallBack;
+
 import java.util.Objects;
 
 /**
@@ -113,6 +115,11 @@ public class BluetoothListenerReceiver extends BroadcastReceiver {
         switch (action) {
             case Intent.ACTION_SCREEN_OFF:  //收到熄屏广播
                 SinovoBle.getInstance().getmConnCallBack().onScreenOff();
+
+                if (SinovoBle.getInstance().getBluetoothAdapter().isEnabled() &&
+                        !SinovoBle.getInstance().isBleConnected()){
+                    SinovoBle.getInstance().stopScanBLE();
+                }
                 break;
             case Intent.ACTION_SCREEN_ON:   //收到亮屏广播
                 SinovoBle.getInstance().getmConnCallBack().onScreenOn();

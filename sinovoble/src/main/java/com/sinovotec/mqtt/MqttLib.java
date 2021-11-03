@@ -30,7 +30,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class MqttLib {
 
-    private static final String TAG = "SinovoBle";
+    private static final String TAG = "SinovoMQTT";
     private static MqttLib instance;
     private iotMqttCallback iotMqttCallback;      //mqtt 通信结果回调
 
@@ -39,6 +39,7 @@ public class MqttLib {
 
     private MqttAndroidClient mqttAndroidClient;
     private boolean isMqttOK = false;
+    private boolean isMqttIniting = false;
     private final LinkedList<String> mqttCMDList = new LinkedList<>();          //mqtt 命令队列
 
     private boolean sendingCmdMQTT = false;
@@ -85,6 +86,14 @@ public class MqttLib {
         return bleSendHandler;
     }
 
+    public boolean isMqttIniting() {
+        return isMqttIniting;
+    }
+
+    public void setMqttIniting(boolean mqttIniting) {
+        isMqttIniting = mqttIniting;
+    }
+
     /**
      * 初始化MQTT ，采用的 一机一密方式
      * @param context    上下文对象
@@ -95,7 +104,7 @@ public class MqttLib {
      */
     public void init(Context context, String proKey, String deName, String deSecret, String region, iotMqttCallback callback){
 
-        Log.d(TAG,"Initialize MQTT");   //采用一机一密方式
+        Log.d(TAG,"Initialize MQTT 采用一机一密方式");   //采用一机一密方式
         this.iotMqttCallback = callback;
         this.PUB_TOPIC = "/" + proKey + "/" + deName + "/user/update";
         this.SUB_TOPIC = "/" + proKey + "/" + deName + "/user/get";
@@ -104,11 +113,14 @@ public class MqttLib {
         String userName = "";
         String passWord = "";
 
+        setMqttIniting(true);
+
         /* 获取Mqtt建连信息clientId, username, password */
         AiotMqttOption aiotMqttOption = new AiotMqttOption().getMqttOption(proKey, deName, deSecret);
         if (aiotMqttOption == null) {
             iotMqttCallback.initFailed();
             setMqttOK(false);
+            setMqttIniting(false);
             Log.e(TAG, "device info error");
         } else {
             clientId = aiotMqttOption.getClientId();
@@ -126,22 +138,28 @@ public class MqttLib {
 
         /* 创建MqttAndroidClient对象, 并设置回调接口 */
         mqttAndroidClient = new MqttAndroidClient(context, host, clientId);
+
         mqttAndroidClient.setCallback(new MqttCallback() {
             @Override
             public void connectionLost(Throwable cause) {
                 Log.i(TAG, "connection lost--->" + cause);
                 setMqttOK(false);
                 setSendingCmdMQTT(false);
+                setMqttIniting(false);
+
                 iotMqttCallback.onConnectionLost();
                 mqttSendHandler.removeCallbacksAndMessages(null);    //取消定时任务
                 bleSendHandler.removeCallbacksAndMessages(null);    //取消定时任务
                 mqttSubscribeHandler.removeCallbacksAndMessages(null);    //取消定时任务
+
+                //add wrk 20211101
+                logoutMQTT();
             }
 
             @Override
             public void messageArrived(String topic, MqttMessage message) {
                 String msg = new String(message.getPayload());
-//                Log.i(TAG, "收到 mqtt的信息，topic: " + topic + ", msg: " + msg);
+                Log.i(TAG, "收到 mqtt的信息，topic: " + topic + ", msg: " + msg);
                 if (msg.contains("bledata")){
                     bleSendHandler.removeCallbacksAndMessages(null);    //取消定时任务
                 }else {
@@ -181,7 +199,7 @@ public class MqttLib {
                                     publishMessage(cmd2send);
                                 }else{
                                     setSendingCmdMQTT(false);
-                                    Log.d(TAG, "MQTT is not ready, it cann't send command:" + cmd2send);
+                                    Log.d(TAG, "messageArrived MQTT is not ready, it cann't send command:" + cmd2send);
                                     if (iotMqttCallback != null) {
                                         iotMqttCallback.onPublishFailed();
                                     }
@@ -220,7 +238,7 @@ public class MqttLib {
                                 publishMessage(cmd2send);
                             }else{
                                 setSendingCmdMQTT(false);
-                                Log.d(TAG, "MQTT is not ready, it cann't send command:" + cmd2send);
+                                Log.d(TAG, "messageArrived2 MQTT is not ready, it cann't send command:" + cmd2send);
                                 if (iotMqttCallback != null) {
                                     iotMqttCallback.onPublishFailed();
                                 }
@@ -254,6 +272,7 @@ public class MqttLib {
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     Log.e(TAG, "connect mqtt failed ,error info:" + exception);
                     setMqttOK(false);
+                    setMqttIniting(false);
                     iotMqttCallback.onConnectFailed();
                 }
             });
@@ -270,11 +289,24 @@ public class MqttLib {
      */
     private void subscribeTopic(String topic) {
         try {
+            if (mqttAndroidClient == null){
+                Log.i(TAG, "subscribed failed, mqttAndroidClient == null");
+                setMqttOK(false);
+                setMqttIniting(false);
+                setSendingCmdMQTT(false);
+                mqttSubscribeHandler.removeCallbacksAndMessages(null);    //取消定时任务
+                if (iotMqttCallback != null) {
+                    iotMqttCallback.onSubscribeFailed();
+                }
+                return;
+            }
+
             mqttAndroidClient.subscribe(topic, 0, null, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
                     Log.i(TAG, "subscribed succeed");
                     setMqttOK(true);
+                    setMqttIniting(false);
                     setSendingCmdMQTT(false);
                     mqttSubscribeHandler.removeCallbacksAndMessages(null);    //取消定时任务
                     if (iotMqttCallback != null) {
@@ -286,6 +318,7 @@ public class MqttLib {
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     Log.i(TAG, "subscribed failed");
                     setMqttOK(false);
+                    setMqttIniting(false);
                     setSendingCmdMQTT(false);
                     mqttSubscribeHandler.removeCallbacksAndMessages(null);    //取消定时任务
                     if (iotMqttCallback != null) {
@@ -328,7 +361,7 @@ public class MqttLib {
 
                     //延迟30秒后再检测 是否已经收到锁端的恢复
                     if (payload.contains("send2lock")){
-                        bleSendHandler.postDelayed(() -> checkDataReceive("send2lock"), 15*1000);
+                        bleSendHandler.postDelayed(() -> checkDataReceive("send2lock"), 30*1000);
                     }
                     if (payload.contains("send2GW")){
                         bleSendHandler.postDelayed(() -> checkDataReceive("send2GW"), 10*1000);
@@ -353,6 +386,7 @@ public class MqttLib {
     public void logoutMQTT(){
         //设置mqtt为 还没注册
         setMqttOK(false);
+        setMqttIniting(false);
         setSendingCmdMQTT(false);
 
         if (mqttAndroidClient == null){
@@ -360,8 +394,10 @@ public class MqttLib {
             return;
         }
         try {
+         //   mqttAndroidClient.unsubscribe(SUB_TOPIC);
             mqttAndroidClient.disconnect();
             mqttAndroidClient.unregisterResources();
+
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -373,7 +409,6 @@ public class MqttLib {
         //注销蓝牙连接
         SinovoBle.getInstance().disconnBle();
     }
-
 
     /**
      * MQTT建连选项类，输入设备三元组productKey, deviceName和deviceSecret, 生成Mqtt建连参数clientId，username和password.
@@ -459,7 +494,7 @@ public class MqttLib {
                 publishMessage(json.toString());
             }else{
                 setSendingCmdMQTT(false);
-                Log.d(TAG, "MQTT is not ready, it cann't send command:" + json.toString());
+                Log.d(TAG, "getDataToSend2 MQTT is not ready, it cann't send command:" + json.toString());
                 if (iotMqttCallback != null) {
                     iotMqttCallback.onPublishFailed();
                 }
@@ -476,7 +511,7 @@ public class MqttLib {
             Log.d(TAG, "send command via mqtt: " + jsonData);
             publishMessage(jsonData);
         }else{
-            Log.d(TAG, "MQTT is not ready, it cann't send command:" + jsonData);
+            Log.d(TAG, "getDataToSend MQTT is not ready, it cann't send command:" + jsonData);
             if (iotMqttCallback != null) {
                 iotMqttCallback.onPublishFailed();
             }
@@ -492,7 +527,7 @@ public class MqttLib {
             Log.d(TAG, "pushDataToMqtt via mqtt: " + jsonData);
             publishMessage(jsonData);
         }else{
-            Log.d(TAG, "MQTT is not ready, it cann't send command:" + jsonData);
+            Log.d(TAG, "pushDataToMqtt MQTT is not ready, it cann't send command:" + jsonData);
             if (iotMqttCallback != null) {
                 iotMqttCallback.onPublishFailed();
             }
@@ -502,10 +537,13 @@ public class MqttLib {
     private void checkDataReceive(String dataType){
         if (dataType.equals("send2lock")){
             Log.d(TAG,"The command sent to lock via mqtt has timed out, 12s");
-            if (iotMqttCallback != null) {
-                iotMqttCallback.onReceiveBLETimeout();
-            }
             setSendingCmdMQTT(false);
+
+            //add wrk 20211101 , 超时后将此命令删除
+            if (!getMqttCMDList().isEmpty()) {
+                Log.d(TAG,"超时，删除命令此命令："+ getMqttCMDList().getFirst());
+                getMqttCMDList().removeFirst();
+            }
 
             //如果队列中还有命令，则尝试去发送它
             if (!getMqttCMDList().isEmpty()){
@@ -516,11 +554,14 @@ public class MqttLib {
                     publishMessage(cmd2send);
                 }else{
                     setSendingCmdMQTT(false);
-                    Log.d(TAG, "MQTT is not ready, it cann't send command:" + cmd2send);
+                    Log.d(TAG, "timout,MQTT is not ready, it cann't send command:" + cmd2send);
                     if (iotMqttCallback != null) {
                         iotMqttCallback.onPublishFailed();
                     }
                 }
+            }
+            if (iotMqttCallback != null) {
+                iotMqttCallback.onReceiveBLETimeout();
             }
         }
 
@@ -750,6 +791,7 @@ public class MqttLib {
      *                 09 get the auto-create setting
      *                 10 get the superUser's priority
      *                 11 get the basetime of the lock
+     *                 12 get the info of the lock
      */
     public void getLockInfo(String gatewayid, String type, String uuid, String mac, String sno, String dataType){
         String datasend = "";
@@ -871,6 +913,8 @@ public class MqttLib {
     //停止mqtt 继续发送命令
     public void stopMqttSendCmd(){
         //同时清除 mqtt端的命令队列  --- add 20210916
+        mqttSendHandler.removeCallbacksAndMessages(null);    //取消定时任务
+        bleSendHandler.removeCallbacksAndMessages(null);    //取消定时任务
         MqttLib.getInstance().getMqttCMDList().clear();
         MqttLib.getInstance().getBleSendHandler().removeCallbacksAndMessages(null);
         setSendingCmdMQTT(false);

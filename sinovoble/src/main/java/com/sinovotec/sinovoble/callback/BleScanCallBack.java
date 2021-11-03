@@ -59,7 +59,13 @@ public class BleScanCallBack extends ScanCallback {
 
                         if (SinovoBle.getInstance().isDfuMode()){
                             Log.w(TAG,"dfu升级模式下，扫描得到的锁mac："+ bleScanDevice.GetDevice().getAddress());
-                            new Handler(Looper.getMainLooper()).postDelayed(() -> SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice()), 500);
+
+                            //开始连接升级后，停止蓝牙扫描  add wrk 20211020
+                            if (bleScanDevice.GetDevice().getAddress().equals(SinovoBle.getInstance().getDfu_mac())) {
+                                Log.d(TAG,"DFU 升级模式下，扫描得到的mac地址 为 dfu的地址，可以连接进行升级");
+                                SinovoBle.getInstance().stopScanBLE();
+                               // new Handler(Looper.getMainLooper()).postDelayed(() -> SinovoBle.getInstance().connectBle(bleScanDevice.GetDevice()), 500);
+                            }
                             return;
                         }
 
@@ -281,14 +287,17 @@ public class BleScanCallBack extends ScanCallback {
             SinovoBle.getInstance().getScanBleHandler().postDelayed(() -> SinovoBle.getInstance().bleScan(iScanCallBack), 1000);
         }
 
-        if (!SinovoBle.getInstance().isBindMode() && !SinovoBle.getInstance().isScanOnly() && !SinovoBle.getInstance().isDfuMode()) {
-            if (SinovoBle.getInstance().getScanRound() == 3 && !SinovoBle.getInstance().isFoundSomeBLE()) {
-                int scanCount = SinovoBle.getInstance().getScanRound() - 1;
-                Log.e(TAG, "扫描了 " + scanCount + " 次，但扫不到任何设备");
-                iScanCallBack.onNotFoundBles20s();
-            }
+        if (!SinovoBle.getInstance().isBindMode() && !SinovoBle.getInstance().isScanOnly()
+                && !SinovoBle.getInstance().isDfuMode() &&!SinovoBle.getInstance().isGWConfigMode()) {
+//            if (SinovoBle.getInstance().getScanRound() == 3 && !SinovoBle.getInstance().isFoundSomeBLE()) {
+//                int scanCount = SinovoBle.getInstance().getScanRound() - 1;
+//                Log.e(TAG, "扫描了 " + scanCount + " 次，但扫不到任何设备");
+//                iScanCallBack.onNotFoundBles20s();
+//            }
 
-            if (SinovoBle.getInstance().getScanRound() == 6 && SinovoBle.getInstance().isFoundSomeBLE() && !SinovoBle.getInstance().isFoundlock()) {
+//            if (SinovoBle.getInstance().getScanRound() == 6 && SinovoBle.getInstance().isFoundSomeBLE()
+//                    && !SinovoBle.getInstance().isFoundlock() ) {
+            if (SinovoBle.getInstance().getScanRound() == 6 && !SinovoBle.getInstance().isFoundlock() ) {
                 int scanCount = SinovoBle.getInstance().getScanRound() - 1;
                 Log.e(TAG, "扫描了 " + scanCount + " 次，可以扫描到其他ble，但扫描不到指定的锁");
                 iScanCallBack.onNotFoundLock40s();

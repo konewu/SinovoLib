@@ -7,7 +7,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.UUID;
 
-import com.sinovotec.mqtt.MqttLib;
 import com.sinovotec.sinovoble.SinovoBle;
 import com.sinovotec.sinovoble.callback.BleConnCallBack;
 import static com.sinovotec.sinovoble.common.ComTool.toByte;
@@ -19,6 +18,7 @@ public class BleData {
     private boolean isExeCmding = false;          //是否正在执行命令
     private static final String TAG = "SinovoBle";
     private final Handler syncDataHandler = new Handler(Looper.getMainLooper());
+    private int  trySendCMDCount = 0;
 
     public static BleData getInstance() {
         if (instance == null) {
@@ -74,6 +74,7 @@ public class BleData {
 
         //2、检测是否为fe开头的数据，非fe、fc开头则先不处理
         String headCode = data.substring(0,2);
+
         if (!headCode.equals("fe")){
             map.put("errCode", "-3");
             Log.e(TAG, "非fe开头的数据不处理，退出");
@@ -88,8 +89,10 @@ public class BleData {
         }
 
         //如果mac地址为空，则需要更新 写入当前蓝牙的 mac地址
-        if (SinovoBle.getInstance().getLockMAC().isEmpty()){
-            SinovoBle.getInstance().setLockMAC(macWithColon(mac));
+        if (SinovoBle.getInstance().getLockMAC()!=null && SinovoBle.getInstance().getLockMAC().isEmpty()){
+            String macC = macWithColon(mac);
+            Log.e(TAG, "地址转换完的结果："+ macC);
+            SinovoBle.getInstance().setLockMAC(macC);
         }
 
         //收到回复，表示命令执行完成，将此命令从队列中删除
@@ -97,27 +100,32 @@ public class BleData {
             String funcodelist = getCommandList().getFirst();
             funcodelist = funcodelist.substring(2,4);
 
-           // Log.d(TAG, "锁端返回数据的功能码："+funcodebt + ",命令队列中第一个命令的功能码："+funcodelist);
+            Log.d(TAG, "锁端返回数据的功能码："+funcodebt + ",命令队列中第一个命令的功能码："+funcodelist);
 
             //需要注意，如果是同步数据或是日志，必须同步完成才能执行下一个命令，否则容易导致失败连接断开
             if (funcodebt.equals("13") || funcodebt.equals("17")){
                 syncDataHandler.removeCallbacksAndMessages(null);    //取消定时任务
-                syncDataHandler.postDelayed(() -> {
+                syncDataHandler.postDelayed(() -> {      //这个主要担心 14、17 的同步结束标记 命令丢失，导致无法从队列中删除同步的命令
+                        if (getCommandList().size() >0) {
                             getCommandList().removeFirst();
-                            setExeCmding(false);
-
-                            if (SinovoBle.getInstance().isBleConnected()) {
-                                sendDataToBle();
-                            }
-                        }, 2 * 1000);
+                        }
+                        setExeCmding(false);
+                        if (SinovoBle.getInstance().isBleConnected()) {
+                            trySendCMDCount = 0;
+                            sendDataToBle();
+                        }
+                    }, 3 * 1000);
                 Log.d(TAG, "正在同步，需要同步完成才能执行下一个命令");
             }else {
                 if (funcodebt.equals(funcodelist) || (funcodebt.equals("14") && funcodelist.equals("13")) || (funcodebt.equals("18") && funcodelist.equals("17"))) {
                     syncDataHandler.removeCallbacksAndMessages(null);    //取消定时任务
-                    getCommandList().removeFirst();
+                    if (getCommandList().size() >0) {
+                        getCommandList().removeFirst();
+                    }
                     setExeCmding(false);
 
                     if (SinovoBle.getInstance().isBleConnected()) {
+                        trySendCMDCount = 0;
                         sendDataToBle();
                     }
                 }else {
@@ -285,6 +293,7 @@ public class BleData {
         if (!isExeCmding()){
             if (SinovoBle.getInstance().isBleConnected() || SinovoBle.getInstance().isBindMode()) {
                 Log.d(TAG, "[Ble connect] it's connected, now to send command");
+                trySendCMDCount = 0;
                 sendDataToBle();
             }else {
                 Log.d(TAG, "采用wifi连接，通过mqtt 发送命令");
@@ -313,14 +322,13 @@ public class BleData {
         final  byte[] write_msg_byte = toByte(getCommandList().getFirst());
         if (SinovoBle.getInstance().getBleServiceUUID() != null && SinovoBle.getInstance().getBlecharacteristUUID() != null ){
             new Handler(Looper.getMainLooper()).postDelayed(() ->{
-                        UUID uuid_service = UUID.fromString(SinovoBle.getInstance().getBleServiceUUID());
-                        UUID uuid_characterics = UUID.fromString(SinovoBle.getInstance().getBlecharacteristUUID());
-                        if (SinovoBle.getInstance().isGWConfigMode()){
-                            uuid_characterics = UUID.fromString(BleConstant.WRITE_CHARAC_UUID_GW);
-                        }
-                        BleConnCallBack.getInstance().writeCharacteristic(write_msg_byte, uuid_service, uuid_characterics);
-                    }, 200);
-//                    BleConnCallBack.getInstance().writeCharacteristic(write_msg_byte, uuid_service, uuid_characterics), 200);
+                UUID uuid_service = UUID.fromString(SinovoBle.getInstance().getBleServiceUUID());
+                UUID uuid_characterics = UUID.fromString(SinovoBle.getInstance().getBlecharacteristUUID());
+                if (SinovoBle.getInstance().isGWConfigMode()){
+                    uuid_characterics = UUID.fromString(BleConstant.WRITE_CHARAC_UUID_GW);
+                }
+                BleConnCallBack.getInstance().writeCharacteristic(write_msg_byte, uuid_service, uuid_characterics);
+            }, 200);
         }else {
             Log.d(TAG,"UUID 为空，异常了,断开连接");
             BleConnCallBack.getInstance().disConectBle();
@@ -331,10 +339,13 @@ public class BleData {
      * 命令发送之后，2秒后进行检查，是否受到恢复
      */
     public  void checkDataReceive(){
-        Log.e(TAG, "发送命令完成后，2秒没有收到回复,删除此命令");
         setExeCmding(false);
-        BleData.getInstance().getCommandList().removeFirst();
-        SinovoBle.getInstance().getmConnCallBack().onReceiveDataFailed();
+        if(BleData.getInstance().getCommandList().size() >0){
+            Log.e(TAG, "5秒超时未收到回复,现删除此命令:" + BleData.getInstance().getCommandList().getFirst());
+            BleData.getInstance().getCommandList().removeFirst();
+            sendDataToBle();
+            SinovoBle.getInstance().getmConnCallBack().onReceiveDataFailed();
+        }
     }
 
     /**
@@ -446,6 +457,8 @@ public class BleData {
                 String codeid  = datavalue.substring(6,8);
                 String password = datavalue.substring(8,len-2);
                 password = password.replace("f","");   //密码长度为奇数时，去掉补的f
+
+                if (nid.equals("01")){ type = "01"; }
                 map.put("userNid", nid);
                 map.put("codeType", type);
                 map.put("sid", codeid);
@@ -741,6 +754,9 @@ public class BleData {
             if (dataType.equals("0c")){
                 //恢复出厂设置
                 SinovoBle.getInstance().setLockSNO("");
+
+                //恢复出厂设置后，断开蓝牙连接
+                SinovoBle.getInstance().disconnBle();
             }
         }
         return map;
@@ -1265,6 +1281,7 @@ public class BleData {
         }
         if (errCode.equals("0a")){
             String pre_basetime = ComTool.getSpecialTime(0,-2);
+            Log.d(TAG, "基准时间不存在，需要设置："+ pre_basetime);
             String data = SinovoBle.getInstance().getLockSNO() +pre_basetime;
             exeCommand("1f",data,true);
         }

@@ -153,16 +153,16 @@ public class BleConnCallBack extends BluetoothGattCallback {
                             super.onServicesDiscovered(gatt, status);
 
                             if (discoverServiceH != null) {
-                                Log.e(TAG, "[Ble connect]已经发现服务，取消超时检测" );
+                                Log.w(TAG, "[Ble connect]已经发现服务，取消超时检测" );
                                 discoverServiceH.removeCallbacksAndMessages(null);
                             }
 
                             if (SinovoBle.getInstance().isGWConfigMode()){
-                                Log.e(TAG, "[Ble connect]连接网关ble成功，发现服务" );
+                                Log.w(TAG, "[Ble connect]连接网关ble成功，发现服务" );
                                 return;
                             }
 
-                            Log.e(TAG, "[Ble connect]Discover Service callback ，status：" + status);
+                            Log.w(TAG, "[Ble connect]Discover Service callback ，status：" + status);
                             if (status == BluetoothGatt.GATT_SUCCESS) {
                                 afterDiscoverService(gatt);
                             } else {
@@ -296,12 +296,12 @@ public class BleConnCallBack extends BluetoothGattCallback {
                                     SinovoBle.getInstance().getToConnectLockList().add(myAutoConnectLock);
 
                                     //通知回调，连接成功
-                                    final String bleSNO = bleSno;
-                                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                        if (bleSNO.length() == 6) {
-                                            BleData.getInstance().exeCommand("1f", bleSNO, false); //查询基准时间
-                                        }
-                                    }, 300);
+//                                    final String bleSNO = bleSno;
+//                                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+//                                        if (bleSNO.length() == 6) {
+//                                            BleData.getInstance().exeCommand("1f", bleSNO, false); //查询基准时间
+//                                        }
+//                                    }, 300);
                                 }
                             } else {
                                 Log.d(TAG, "onDescriptorWrite 回调失败，status=" + status);
@@ -417,7 +417,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                             Log.e(TAG, "[Ble connect]自动重连10次都失败了，通知前端 连接失败");
                             SinovoBle.getInstance().getmConnCallBack().onConnectFailure(disconn_mac);
                         }else {
-                            Log.e(TAG, "[Ble connect]自动重连失败："+bleReConnectCount + "次，不需要通知前端连接失败自动重连");
+                            Log.e(TAG, "[Ble connect]自动重连失败："+bleReConnectCount + "次，自动重连");
                             SinovoBle.getInstance().connectBle(bleDevice);
                         }
                     }
@@ -665,7 +665,7 @@ public class BleConnCallBack extends BluetoothGattCallback {
                 exeCmdMaxCount = 0;
                 Log.w(TAG, "Cmd:"+ BleData.getInstance().getCommandList().getFirst()+" send ok");
                 //延迟1.5秒后再检测 是否已经收到锁端的恢复
-                sendDataHandler.postDelayed(() -> BleData.getInstance().checkDataReceive(), 3000);
+                sendDataHandler.postDelayed(() -> BleData.getInstance().checkDataReceive(), 5000);
             }else {
                 exeCmdMaxCount ++;
                 Log.e(TAG, "Cmd:"+ BleData.getInstance().getCommandList().getFirst()+" send failed， exeCmdMaxCount："+exeCmdMaxCount);

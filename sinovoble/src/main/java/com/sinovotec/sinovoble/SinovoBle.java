@@ -54,11 +54,11 @@ import static android.content.Context.WIFI_SERVICE;
 
 public class SinovoBle {
     private final String TAG    = "SinovoBle";
-    private String lockQRCode ;                   //锁的二维码，用户输入的，用于添加锁的
-    private String userIMEI;                      //手机的imei，作为手机id
-    private String lockMAC;                       //当前连接锁的蓝牙mac地址
+    private String lockQRCode   = "";             //锁的二维码，用户输入的，用于添加锁的
+    private String userIMEI     = "";             //手机的imei，作为手机id
+    private String lockMAC      = "";             //当前连接锁的蓝牙mac地址
     private String lockSNO      = "";             //手机与锁进行蓝牙通信使用的 校验码
-    private String lockName;                      //锁的名称
+    private String lockName     = "";             //锁的名称
     private String appFilePath  = "";             // APP保存升级包的目录
     private String dfu_mac      = "";             //dfu 升级时 设备的mac地址
 
@@ -309,10 +309,6 @@ public class SinovoBle {
 
     public void setBleConnectLock_dfu(BleConnectLock bleConnectLock_dfu) {
         this.bleConnectLock_dfu = bleConnectLock_dfu;
-    }
-
-    public boolean isFoundSomeBLE() {
-        return foundSomeBLE;
     }
 
     public boolean isFoundlock() {
@@ -840,7 +836,7 @@ public class SinovoBle {
         //添加卡、指纹、防胁迫指纹
         if (dataType.equals("06") || dataType.equals("07") || dataType.equals("08")){
             String data_s = lockSNO +userNID + dataType ;
-            BleData.getInstance().exeCommand("05", data_s, true);
+            BleData.getInstance().exeCommand("05", data_s, false);
         }
     }
 
@@ -1544,6 +1540,13 @@ public class SinovoBle {
 
         //设置当前连接的锁 为空
         BleConnCallBack.getInstance().setMyBleDevice(null);
+    }
+
+    //对外提供停止扫描的函数
+    public void stopScanBLE(){
+        SinovoBle.getInstance().setScanAgain(false);
+
+        BleScanCallBack.getInstance(getmBleScanCallBack()).stopScan();
     }
 
     private class BlufiCallbackMain extends BlufiCallback {

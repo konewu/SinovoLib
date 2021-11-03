@@ -222,7 +222,7 @@ public class ComTool {
         WifiManager wifiManager = (WifiManager) mContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInfo = wifiManager.getConnectionInfo();
 
-        Log.i("WIFI TEST", "获取wifi的 频段 ："+ wifiInfo.getFrequency());
+        Log.i("SinovoWIFI", "获取wifi的 频段 ："+ wifiInfo.getFrequency());
         String frequency = "2.4G";
         if (is5GHz(wifiInfo.getFrequency())){
             frequency = "5G";
