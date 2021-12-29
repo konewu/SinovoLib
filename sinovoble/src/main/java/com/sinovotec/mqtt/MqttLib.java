@@ -326,7 +326,6 @@ public class MqttLib {
                     }
                 }
             });
-
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -394,9 +393,9 @@ public class MqttLib {
             return;
         }
         try {
-         //   mqttAndroidClient.unsubscribe(SUB_TOPIC);
-            mqttAndroidClient.disconnect();
+            mqttAndroidClient.unsubscribe(SUB_TOPIC);
             mqttAndroidClient.unregisterResources();
+            // mqttAndroidClient.disconnect();
 
         } catch (MqttException e) {
             e.printStackTrace();

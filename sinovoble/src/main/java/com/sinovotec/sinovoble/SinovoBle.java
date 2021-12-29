@@ -107,7 +107,7 @@ public class SinovoBle {
     private byte[] wifiInfo;
     private GWSmartConfigCallback gwConfigCallback;         //网关配网成功之后的回调
 
-    private final ArrayList<BleConnectLock> tmpConnectLockList;         //临时的自动连接的设备列表，网关蓝牙配网时，会断开锁的蓝牙连接，这里先保存下来，配网完成后在连接回去
+    private final ArrayList<BleConnectLock> tmpConnectLockList; //临时的自动连接的设备列表，网关蓝牙配网时，会断开锁的蓝牙连接，这里先保存下来，配网完成后在连接回去
 
     /**
      * Instantiate  SinovoBle class

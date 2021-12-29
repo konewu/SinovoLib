@@ -18,7 +18,6 @@ public class BleData {
     private boolean isExeCmding = false;          //是否正在执行命令
     private static final String TAG = "SinovoBle";
     private final Handler syncDataHandler = new Handler(Looper.getMainLooper());
-    private int  trySendCMDCount = 0;
 
     public static BleData getInstance() {
         if (instance == null) {
@@ -111,7 +110,7 @@ public class BleData {
                         }
                         setExeCmding(false);
                         if (SinovoBle.getInstance().isBleConnected()) {
-                            trySendCMDCount = 0;
+//                            trySendCMDCount = 0;
                             sendDataToBle();
                         }
                     }, 3 * 1000);
@@ -125,7 +124,7 @@ public class BleData {
                     setExeCmding(false);
 
                     if (SinovoBle.getInstance().isBleConnected()) {
-                        trySendCMDCount = 0;
+//                        trySendCMDCount = 0;
                         sendDataToBle();
                     }
                 }else {
@@ -293,7 +292,7 @@ public class BleData {
         if (!isExeCmding()){
             if (SinovoBle.getInstance().isBleConnected() || SinovoBle.getInstance().isBindMode()) {
                 Log.d(TAG, "[Ble connect] it's connected, now to send command");
-                trySendCMDCount = 0;
+//                trySendCMDCount = 0;
                 sendDataToBle();
             }else {
                 Log.d(TAG, "采用wifi连接，通过mqtt 发送命令");
