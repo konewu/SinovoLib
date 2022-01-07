@@ -304,34 +304,28 @@ public class BleData {
      *  重新起一个子进程来执行 发送命令的活
      */
     private void sendDataToBle(){
-        if (getCommandList().isEmpty()){
-            return;
-        }
-
-        if (getCommandList().getFirst() == null){
-            return;
-        }
-
-        if (isExeCmding()){
-            return;
-        }
+        if (getCommandList().isEmpty()){ return; }
+        if (getCommandList().getFirst() == null){ return; }
+        if (isExeCmding()){ return; }
 
         Log.d(TAG,"bledata 发送指令："+getCommandList().getFirst() );
         setExeCmding(true);
         final  byte[] write_msg_byte = toByte(getCommandList().getFirst());
-        if (SinovoBle.getInstance().getBleServiceUUID() != null && SinovoBle.getInstance().getBlecharacteristUUID() != null ){
-            new Handler(Looper.getMainLooper()).postDelayed(() ->{
+
+        new Handler(Looper.getMainLooper()).postDelayed(() ->{
+            if (SinovoBle.getInstance().getBleServiceUUID() != null && SinovoBle.getInstance().getBlecharacteristUUID() != null ) {
                 UUID uuid_service = UUID.fromString(SinovoBle.getInstance().getBleServiceUUID());
                 UUID uuid_characterics = UUID.fromString(SinovoBle.getInstance().getBlecharacteristUUID());
-                if (SinovoBle.getInstance().isGWConfigMode()){
+                if (SinovoBle.getInstance().isGWConfigMode()) {
                     uuid_characterics = UUID.fromString(BleConstant.WRITE_CHARAC_UUID_GW);
                 }
                 BleConnCallBack.getInstance().writeCharacteristic(write_msg_byte, uuid_service, uuid_characterics);
-            }, 200);
-        }else {
-            Log.d(TAG,"UUID 为空，异常了,断开连接");
-            BleConnCallBack.getInstance().disConectBle();
-        }
+            }else {
+                Log.d(TAG,"UUID 为空，异常了,断开连接");
+                BleConnCallBack.getInstance().disConectBle();
+            }
+        }, 200);
+
     }
 
     /**

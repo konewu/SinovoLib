@@ -658,13 +658,18 @@ public class BleConnCallBack extends BluetoothGattCallback {
                 return;
             }
             BluetoothGattCharacteristic characteristic = service.getCharacteristic(characterUUID);
+            if (characteristic == null){
+                Log.e(TAG, "writeCharacteristic failed to getCharacteristic");
+                disConectBle();
+                return;
+            }
             characteristic.setValue(value);
             boolean status = mBluetoothGatt.writeCharacteristic(characteristic);
 
             if (status) {
                 exeCmdMaxCount = 0;
                 Log.w(TAG, "Cmd:"+ BleData.getInstance().getCommandList().getFirst()+" send ok");
-                //延迟1.5秒后再检测 是否已经收到锁端的恢复
+                //延迟5秒后再检测 是否已经收到锁端的恢复
                 sendDataHandler.postDelayed(() -> BleData.getInstance().checkDataReceive(), 5000);
             }else {
                 exeCmdMaxCount ++;
