@@ -96,10 +96,6 @@ public class BleConnCallBack extends BluetoothGattCallback {
                                 SinovoBle.getInstance().getAutoConnetHandler().removeCallbacksAndMessages(null);
                             }
                             if(status == BluetoothGatt.GATT_SUCCESS) {
-                                if (SinovoBle.getInstance().isLinked()){
-                                    Log.d(TAG, "重复连接成功，忽略");
-                                    return;
-                                }
                                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                                     Log.i(TAG, "[Ble connect]Connected to GATT server. try discover Services，linked："+SinovoBle.getInstance().isLinked());
                                     if (!SinovoBle.getInstance().isLinked()){
@@ -113,6 +109,8 @@ public class BleConnCallBack extends BluetoothGattCallback {
                                         }
                                         SinovoBle.getInstance().getToConnectLockList().clear();
                                         SinovoBle.getInstance().getToConnectLockList().add(new BleConnectLock(gatt.getDevice().getAddress(),locksno));
+                                    }else{
+                                        Log.d(TAG, "重复连接成功，忽略");
                                     }
                                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                                     Log.i(TAG, "[Ble connect]Disconnected from GATT server.");
