@@ -6,6 +6,11 @@ import android.util.Log;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -129,6 +134,32 @@ public class HttpLib {
         return "";
     }
 
+    //解析获取 app版本号
+    private String getAppVersionByJsoup(){
+        String newVersion = "";
+        try {
+            Document document = Jsoup.connect("https://play.google.com/store/apps/details?id=com.sinovo.fmlock&hl=en")
+                    .timeout(30000)
+                    .userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6")
+                    .referrer("http://www.google.com")
+                    .get();
+            if (document != null) {
+                Elements element = document.getElementsContainingOwnText("Current Version");
+                for (Element ele : element) {
+                    if (ele.siblingElements() != null) {
+                        Elements sibElemets = ele.siblingElements();
+                        for (Element sibElemet : sibElemets) {
+                            newVersion = sibElemet.text();
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return newVersion;
+    }
+
     /**
      *get的方式请求
      *@return 返回null 登录异常
@@ -177,7 +208,13 @@ public class HttpLib {
     private void httpGetWithThread(String url, int getFlag){
         new Thread(() -> {
             Log.i(TAG, "http get,url:"+url);
-            String result = httpGet(url);
+            String result = "";
+            if (getFlag == 27){
+                result = getAppVersionByJsoup();
+            }else {
+                result = httpGet(url);
+            }
+
             if (result.contains("!DOCTYPE html") || result.isEmpty()){
                 callback(getFlag,connfailed("SYSTEM ERROR"));
             }else {
@@ -391,6 +428,9 @@ public class HttpLib {
                 break;
             case 26:    //删除网关的子设备，解除网关与锁的关联
                 httpLibCallback.onDelGwSubLock(resultStr);
+                break;
+            case 27:    //查询google play上的 app最新版本号
+                httpLibCallback.onGetAppVerion(resultStr);
                 break;
         }
     }
@@ -859,6 +899,14 @@ public class HttpLib {
     public void getLockType(){
         String path = serverIP+"/locktype/locktype.json";
         httpGetWithThread(path, 24);
+    }
+
+    /**
+     * http get 请求 google play上的app 最新版本
+     */
+    public void getAppVersionOnGoogle(){
+        String path = "https://play.google.com/store/apps/details?id=com.sinovo.fmlock&hl=en";
+        httpGetWithThread(path, 27);
     }
 
     /**

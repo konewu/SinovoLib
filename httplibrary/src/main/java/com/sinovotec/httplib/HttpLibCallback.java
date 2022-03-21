@@ -85,4 +85,8 @@ public interface HttpLibCallback {
 
   //上传日志文件
   void onUploadFile(String result);
+
+  //查询google play上的 app版本号
+  void onGetAppVerion(String result);
+
 }
