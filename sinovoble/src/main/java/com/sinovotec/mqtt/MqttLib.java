@@ -388,23 +388,19 @@ public class MqttLib {
         setMqttIniting(false);
         setSendingCmdMQTT(false);
 
-        if (mqttAndroidClient == null){
-            Log.e(TAG,"logoutMQTT mqttAndroidClient is null, exit");
-            return;
-        }
         try {
-            mqttAndroidClient.unsubscribe(SUB_TOPIC);
-            mqttAndroidClient.unregisterResources();
+            if (mqttAndroidClient != null){
+                mqttAndroidClient.unsubscribe(SUB_TOPIC);
+                mqttAndroidClient.unregisterResources();
+                mqttAndroidClient.setCallback(null);
+                mqttAndroidClient = null;
+                Log.e(TAG,"logoutMQTT disconnect mqtt，exit");
+            }
             // mqttAndroidClient.disconnect();
 
         } catch (MqttException e) {
             e.printStackTrace();
         }
-
-        mqttAndroidClient.setCallback(null);
-        mqttAndroidClient = null;
-        Log.e(TAG,"logoutMQTT disconnect mqtt，exit");
-
         //注销蓝牙连接
         SinovoBle.getInstance().disconnBle();
     }

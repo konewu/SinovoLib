@@ -36,7 +36,6 @@ android {
             jniLibs.srcDirs = ['jnilibs']
         }
     }
-
 }
 
 dependencies {
@@ -50,5 +49,4 @@ dependencies {
     implementation 'com.alibaba:fastjson:1.2.40'        //fastjson 解析库
     implementation("com.squareup.okhttp3:okhttp:4.9.0")
     implementation 'org.jsoup:jsoup:1.13.1'
-
 }
