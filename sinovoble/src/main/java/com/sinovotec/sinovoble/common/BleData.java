@@ -292,7 +292,6 @@ public class BleData {
         if (!isExeCmding()){
             if (SinovoBle.getInstance().isBleConnected() || SinovoBle.getInstance().isBindMode()) {
                 Log.d(TAG, "[Ble connect] it's connected, now to send command");
-//                trySendCMDCount = 0;
                 sendDataToBle();
             }else {
                 Log.d(TAG, "采用wifi连接，通过mqtt 发送命令");

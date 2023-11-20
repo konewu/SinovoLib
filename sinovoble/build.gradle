@@ -54,7 +54,7 @@ dependencies {
     implementation 'com.alibaba:fastjson:1.2.40'
     implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.1.0'
     implementation 'org.eclipse.paho:org.eclipse.paho.android.service:1.1.1'
-    implementation 'no.nordicsemi.android:dfu:1.11.0'    //nordic  dfu ota 升级库 ，
+    implementation 'no.nordicsemi.android:dfu:1.11.1'    //nordic  dfu ota 升级库 ，//20231120 改为 1.11.1
     implementation 'pub.devrel:easypermissions:1.1.3'           //增加此库，动态申请权限的
     implementation 'com.github.EspressifApp:lib-blufi-android:2.3.4'    //esp32 蓝牙配网库
     implementation project(path: ':andesptouch')

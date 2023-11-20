@@ -1213,6 +1213,26 @@ public class SinovoBle {
     }
 
     /**
+     * 扩展 新功能的API接口，允许用户通过此接口执行任何命令
+     * @param data 为需要执行的命令，包括了
+     */
+    public void exeOtherCmd(String funcode, String data, String lockMacAddress){
+        if (data.length() <8){
+            Log.e(TAG, "data's length must more then 8 ");
+            return ;
+        }
+
+        //判断mac地址 与当前蓝牙连接的mac地址是否一致
+        String macTmp = SinovoBle.getInstance().getLockMAC().replace(":","");
+        if (!macTmp.equalsIgnoreCase(lockMacAddress.replace(":",""))){
+            Log.e(TAG, "getLockMAC() is "+ SinovoBle.getInstance().getLockMAC() +"，lockMacAddress:"+lockMacAddress + ",not match");
+            return ;
+        }
+
+        BleData.getInstance().exeCommand(funcode, data, true);
+    }
+
+    /**
      * 清空数据
      * @param datakType 表示清空数据的类型；
      *                  00 表示清空用户，不会删除管理员
