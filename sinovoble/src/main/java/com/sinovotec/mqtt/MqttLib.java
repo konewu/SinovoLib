@@ -656,7 +656,7 @@ public class MqttLib {
             return;
         }
 
-        String datasend ;
+        String datasend;
 
         if (!dataType.equals("0e")){
             String data = sno +dataType + delID ;

@@ -42,7 +42,7 @@ public class HttpLib {
     private final OkHttpClient httpClient = new OkHttpClient();
 
     private static HttpLib instance;
-    private String accessToken;             //APP获取这个参数暂时保存在手机里，作为其他接口的调用凭证
+    private String accessToken = "";             //APP获取这个参数暂时保存在手机里，作为其他接口的调用凭证  modify
 
     private final HttpLibCallback httpLibCallback;  //http发送数据的回调
 
@@ -320,7 +320,7 @@ public class HttpLib {
                 }else {
                     result = post(url, postData);
                 }
-                if (result.contains("!DOCTYPE html")){
+                if (result.toUpperCase().contains("!DOCTYPE HTML")){
                     callback(funcode,connfailed("SYSTEM ERROR"));
                 }else {
                     if (funcode !=25) {

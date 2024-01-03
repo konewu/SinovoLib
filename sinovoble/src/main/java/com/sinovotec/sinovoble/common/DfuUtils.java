@@ -13,6 +13,11 @@ import no.nordicsemi.android.dfu.DfuServiceListenerHelper;
 
 import static android.content.Context.ACTIVITY_SERVICE;
 
+
+
+/**
+ * DFU 工具类
+ */
 public class DfuUtils {
 
     private static DfuUtils dfuUtils;

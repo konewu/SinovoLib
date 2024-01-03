@@ -2,13 +2,10 @@ apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 30
-    buildToolsVersion "30.0.1"
 
     defaultConfig {
         minSdkVersion 21
         targetSdkVersion 30
-        versionCode 1
-        versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'consumer-rules.pro'
@@ -23,6 +20,8 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        profile {
         }
     }
 
@@ -48,14 +47,22 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'androidx.appcompat:appcompat:1.3.0'
+
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
     implementation 'com.alibaba:fastjson:1.2.40'
     implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.1.0'
-    implementation 'org.eclipse.paho:org.eclipse.paho.android.service:1.1.1'
-    implementation 'no.nordicsemi.android:dfu:1.11.1'    //nordic  dfu ota 升级库 ，//20231120 改为 1.11.1
+
+//    implementation 'org.eclipse.paho:org.eclipse.paho.android.service:1.1.1'  // todo 等待官方修复新版本
+    implementation 'androidx.work:work-runtime:2.7.1'   // todo 在官方新版本修复前，暂时手动修复org.eclipse.paho.android.service的Bug：Android version 31上PendingIntent FLAG_IMMUTABLE异常
+
+    implementation 'no.nordicsemi.android:dfu:1.11.1'    //nordic  dfu ota 升级库 ，
     implementation 'pub.devrel:easypermissions:1.1.3'           //增加此库，动态申请权限的
     implementation 'com.github.EspressifApp:lib-blufi-android:2.3.4'    //esp32 蓝牙配网库
     implementation project(path: ':andesptouch')
+
+
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'  // todo LocalBroadcastManager
+
 }

@@ -7,6 +7,9 @@ import android.os.IBinder;
 import androidx.annotation.Nullable;
 import no.nordicsemi.android.dfu.DfuBaseService;
 
+/**
+ * DFU设备
+ */
 public class DfuService extends DfuBaseService {
     public DfuService() {
     }

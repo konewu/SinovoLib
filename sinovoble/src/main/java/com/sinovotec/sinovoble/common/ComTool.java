@@ -16,6 +16,10 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.Random;
 
+
+/**
+ * 命令工具类
+ */
 public class ComTool {
     /**
      * 将字节转换为 16进制的 字符串

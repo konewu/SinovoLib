@@ -1,5 +1,8 @@
 package com.sinovotec.sinovoble.common;
 
+/**
+ * 连接蓝牙锁类
+ */
 public class BleConnectLock {
     private String lockMac;        //蓝牙锁的mac地址
     private String lockSno;        //蓝牙锁通信用的 sno地址

@@ -2,6 +2,10 @@ package com.sinovotec.sinovoble.common;
 
 import android.bluetooth.BluetoothDevice;
 
+
+/**
+ * 扫描的蓝牙设备
+ */
 public class BleScanDevice {
     private BluetoothDevice device;
     private int averagerssi ;
@@ -24,8 +28,7 @@ public class BleScanDevice {
     }
 
     // 更新信息
-    public void ReflashInf(BluetoothDevice device, int rssi,
-                              byte[] scanRecord, String joinTime) {
+    public void ReflashInf(BluetoothDevice device, int rssi, byte[] scanRecord, String joinTime) {
         this.device         = device;
         this.rssi           = rssi;
         this.scanRecord     = scanRecord;
@@ -33,6 +36,8 @@ public class BleScanDevice {
         averagerssi         = (averagerssi + rssi) / 2;
     }
 
+
+    // 获取加入队列时间
     public String getJoinTime() {
         return joinTime;
     }

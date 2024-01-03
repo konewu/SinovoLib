@@ -29,6 +29,9 @@ import blufi.espressif.response.BlufiStatusResponse;
 
 import static android.content.Context.WIFI_SERVICE;
 
+/**
+ * 网关配网
+ */
 public class GWEspblufi {
     private final String TAG    = "SinovoBle";
 

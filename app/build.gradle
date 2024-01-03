@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 33        //30
     buildToolsVersion "30.0.1"
 
     defaultConfig {
         applicationId "com.sinovotec.sinovolibdemo"
         minSdkVersion 21
-        targetSdkVersion 30
+        targetSdkVersion 33        //30
         versionCode 1
         versionName "1.0"
 
@@ -32,18 +32,18 @@ dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'com.google.android.material:material:1.2.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.2'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.2'  //
 
-    implementation 'androidx.navigation:navigation-fragment:2.3.1'  //2.3.0  ok
-    implementation 'androidx.navigation:navigation-ui:2.3.1' //2.3.0  ok
+    implementation 'androidx.navigation:navigation-fragment:2.3.5'  //2.3.0 ,2.3.1 ok
+    implementation 'androidx.navigation:navigation-ui:2.3.5' //2.3.0 ,2.3.1 ok
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
 
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'           //1.1.2
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'          //3.3.0
 
     implementation 'pub.devrel:easypermissions:1.1.3'           //增加此库，动态申请权限的
-    implementation 'com.alibaba:fastjson:1.2.40'
+    implementation 'com.alibaba:fastjson:1.2.78'            //1.2.40
     implementation 'com.qmuiteam:qmui:2.0.0-alpha04'
 
     implementation project(path: ':sinovoble')

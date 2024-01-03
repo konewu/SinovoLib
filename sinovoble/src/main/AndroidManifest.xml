@@ -16,9 +16,16 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+
+    <!-- 在官方新版本修复前，暂时手动修复org.eclipse.paho.android.service的Bug：Android version 31上PendingIntent FLAG_IMMUTABLE异常-->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+
+
     <application>
         <!-- Mqtt Service -->
         <service android:name="org.eclipse.paho.android.service.MqttService"/>
+
         <service  android:name=".common.DfuService"
             android:exported="false">
             <intent-filter>
